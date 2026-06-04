@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Редактор с IndexedDB и MinIO</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+        }
+
+        .status-dot.synced {
+            background: #17a2b8;
+        }
+
+        .status-dot.error {
+            background: #dc3545;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .panel h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .json-editor {
+            width: 100%;
+            height: 400px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            resize: vertical;
+            background: white;
+        }
+
+        .json-editor:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .data-tree {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+        }
+
+        .tree-item {
+            margin-left: 20px;
+            padding: 5px 0;
+        }
+
+        .tree-key {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tree-value {
+            color: #28a745;
+        }
+
+        .tree-value.string {
+            color: #dc3545;
+        }
+
+        .tree-value.number {
+            color: #fd7e14;
+        }
+
+        .tree-value.boolean {
+            color: #17a2b8;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            font-weight: 600;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.info {
+            background: #17a2b8;
+        }
+
+        .add-field-form {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #dee2e6;
+        }
+
+        .field-list {
+            list-style: none;
+        }
+
+        .field-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 JSON Редактор</h1>
+            <p>Синхронизация данных между IndexedDB и MinIO</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Инициализация...</span>
+            </div>
+            <div class="buttons">
+                <button class="btn btn-info" onclick="loadFromMinIO()">🔄 Загрузить из MinIO</button>
+                <button class="btn btn-success" onclick="saveToMinIO()">💾 Сохранить в MinIO</button>
+                <button class="btn btn-primary" onclick="loadFromIndexedDB()">📂 Загрузить из IndexedDB</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>🔧 JSON Редактор</h2>
+                <textarea class="json-editor" id="jsonEditor" placeholder='{"key": "value"}'></textarea>
+                
+                <div class="add-field-form">
+                    <h3>➕ Добавить поле</h3>
+                    <div class="form-group">
+                        <label>Ключ</label>
+                        <input type="text" id="fieldKey" placeholder="Введите ключ">
+                    </div>
+                    <div class="form-group">
+                        <label>Значение</label>
+                        <input type="text" id="fieldValue" placeholder="Введите значение">
+                    </div>
+                    <div class="form-group">
+                        <label>Тип</label>
+                        <select id="fieldType">
+                            <option value="string">Строка</option>
+                            <option value="number">Число</option>
+                            <option value="boolean">Булево</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="addField()">Добавить</button>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3>📋 Список полей</h3>
+                    <ul class="field-list" id="fieldList"></ul>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🌳 Структура данных</h2>
+                <div class="data-tree" id="dataTree"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // Инициализация IndexedDB
+        const DB_NAME = 'JsonDataDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'jsonData';
+        const PENDING_STORE = 'pendingSync';
+
+        let db = null;
+        let currentData = {};
+        let isMinIOAvailable = true;
+        let syncQueue = [];
+        let isProcessingQueue = false;
+
+        // Открытие/создание IndexedDB
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = () => {
+                    reject('Ошибка открытия базы данных');
+                };
+
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                    if (!database.objectStoreNames.contains(PENDING_STORE)) {
+                        database.createObjectStore(PENDING_STORE, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        // Сохранение в IndexedDB
+        function saveToIndexedDB(data) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put({ id: 'current', data: data, timestamp: new Date() });
+
+                request.onsuccess = () => {
+                    resolve('Данные сохранены в IndexedDB');
+                };
+
+                request.onerror = () => {
+                    reject('Ошибка сохранения в IndexedDB');
+                };
+            });
+        }
+
+        // Загрузка из IndexedDB
+        function loadFromIndexedDBData() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get('current');
+
+                request.onsuccess = () => {
+                    if (request.result) {
+                        resolve(request.result.data);
+                    } else {
+                        resolve(null);
+                    }
+                };
+
+                request.onerror = () => {
+                    reject('Ошибка загрузки из IndexedDB');
+                };
+            });
+        }
+
+        // Обновление статуса
+        function updateStatus(status, message) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            dot.className = 'status-dot ' + status;
+            text.textContent = message;
+        }
+
+        // Показ уведомления
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification ' + type + ' show';
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Парсинг JSON
+        function parseJSON(str) {
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Отображение дерева данных
+        function renderTree(data, container, level = 0) {
+            container.innerHTML = '';
+            
+            if (typeof data === 'object' && data !== null) {
+                for (const [key, value] of Object.entries(data)) {
+                    const item = document.createElement('div');
+                    item.className = 'tree-item';
+                    item.style.marginLeft = (level * 20) + 'px';
+                    
+                    const keySpan = document.createElement('span');
+                    keySpan.className = 'tree-key';
+                    keySpan.textContent = key + ': ';
+                    
+                    const valueSpan = document.createElement('span');
+                    
+                    if (typeof value === 'object' && value !== null) {
+                        valueSpan.textContent = Array.isArray(value) ? 'Array[' + value.length + ']' : 'Object{...}';
+                        valueSpan.style.color = '#6c757d';
+                    } else {
+                        valueSpan.className = 'tree-value ' + typeof value;
+                        valueSpan.textContent = String(value);
+                    }
+                    
+                    item.appendChild(keySpan);
+                    item.appendChild(valueSpan);
+                    container.appendChild(item);
+                    
+                    if (typeof value === 'object' && value !== null) {
+                        renderTree(value, container, level + 1);
+                    }
+                }
+            } else {
+                container.innerHTML = '<p>Нет данных для отображения</p>';
+            }
+        }
+
+        // Отображение списка полей
+        function renderFieldList(data) {
+            const list = document.getElementById('fieldList');
+            list.innerHTML = '';
+            
+            if (typeof data === 'object' && data !== null) {
+                for (const [key, value] of Object.entries(data)) {
+                    const item = document.createElement('li');
+                    item.className = 'field-item';
+                    
+                    const info = document.createElement('span');
+                    info.textContent = key + ': ' + JSON.stringify(value);
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = '✕';
+                    deleteBtn.onclick = () => deleteField(key);
+                    
+                    item.appendChild(info);
+                    item.appendChild(deleteBtn);
+                    list.appendChild(item);
+                }
+            }
+        }
+
+        // Обновление интерфейса
+        function updateUI(data) {
+            currentData = data;
+            document.getElementById('jsonEditor').value = JSON.stringify(data, null, 2);
+            renderTree(data, document.getElementById('dataTree'));
+            renderFieldList(data);
+        }
+
+        // Сохранение в очередь отложенной синхронизации
+        function saveToPendingQueue(data) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([PENDING_STORE], 'readwrite');
+                const store = transaction.objectStore(PENDING_STORE);
+                const request = store.add({ 
+                    data: data, 
+                    timestamp: new Date().toISOString(),
+                    status: 'pending'
+                });
+
+                request.onsuccess = () => {
+                    console.log('Данные добавлены в очередь синхронизации');
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    reject('Ошибка сохранения в очередь');
+                };
+            });
+        }
+
+        // Загрузка очереди отложенной синхронизации
+        function loadPendingQueue() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([PENDING_STORE], 'readonly');
+                const store = transaction.objectStore(PENDING_STORE);
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    const pendingItems = request.result || [];
+                    // Сортируем по времени создания
+                    pendingItems.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                    resolve(pendingItems);
+                };
+
+                request.onerror = () => {
+                    reject('Ошибка загрузки очереди');
+                };
+            });
+        }
+
+        // Удаление элемента из очереди после успешной синхронизации
+        function removeFromPendingQueue(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([PENDING_STORE], 'readwrite');
+                const store = transaction.objectStore(PENDING_STORE);
+                const request = store.delete(id);
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject('Ошибка удаления из очереди');
+            });
+        }
+
+        // Очистка всей очереди
+        function clearPendingQueue() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([PENDING_STORE], 'readwrite');
+                const store = transaction.objectStore(PENDING_STORE);
+                const request = store.clear();
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject('Ошибка очистки очереди');
+            });
+        }
+
+        // Обработка очереди синхронизации
+        async function processSyncQueue() {
+            if (isProcessingQueue) return;
+            
+            isProcessingQueue = true;
+            
+            try {
+                const pendingItems = await loadPendingQueue();
+                
+                if (pendingItems.length === 0) {
+                    isProcessingQueue = false;
+                    return;
+                }
+
+                console.log(`Обработка ${pendingItems.length} элементов очереди синхронизации...`);
+                updateStatus('synced', `Синхронизация ${pendingItems.length} изменений...`);
+
+                for (const item of pendingItems) {
+                    try {
+                        const response = await fetch('/api/data', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(item.data)
+                        });
+
+                        if (response.ok) {
+                            await removeFromPendingQueue(item.id);
+                            console.log(`Элемент ${item.id} успешно синхронизирован`);
+                        } else {
+                            throw new Error('Ошибка сервера');
+                        }
+                    } catch (error) {
+                        console.error(`Не удалось синхронизировать элемент ${item.id}:`, error);
+                        // Оставляем в очереди для повторной попытки
+                        break;
+                    }
+                }
+
+                // Проверяем доступность MinIO
+                const testResponse = await fetch('/api/data', { method: 'GET' });
+                if (testResponse.ok) {
+                    isMinIOAvailable = true;
+                    updateStatus('connected', 'Данные синхронизированы');
+                    showNotification('Все изменения синхронизированы с MinIO', 'success');
+                    
+                    // Очищаем очередь если все успешно
+                    const remainingItems = await loadPendingQueue();
+                    if (remainingItems.length === 0) {
+                        await clearPendingQueue();
+                    }
+                }
+            } catch (error) {
+                isMinIOAvailable = false;
+                updateStatus('error', 'MinIO недоступен. Изменения в очереди.');
+                console.error('Ошибка обработки очереди:', error);
+            } finally {
+                isProcessingQueue = false;
+            }
+        }
+
+        // Синхронизация: сохранение в IndexedDB и отправка в MinIO
+        async function syncData(data, addToQueue = true) {
+            try {
+                // Сохраняем в IndexedDB
+                await saveToIndexedDB(data);
+                
+                // Отправляем в MinIO
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка сохранения в MinIO');
+                }
+                
+                isMinIOAvailable = true;
+                updateStatus('connected', 'Данные синхронизированы');
+                
+                // Если были отложенные изменения, пытаемся их синхронизировать
+                if (addToQueue) {
+                    await processSyncQueue();
+                }
+            } catch (error) {
+                isMinIOAvailable = false;
+                updateStatus('error', 'MinIO недоступен. Изменения сохранены локально.');
+                console.error('Sync error:', error);
+                
+                // Добавляем в очередь отложенной синхронизации
+                if (addToQueue) {
+                    try {
+                        await saveToPendingQueue(data);
+                        showNotification('MinIO недоступен. Изменения добавлены в очередь синхронизации.', 'info');
+                    } catch (queueError) {
+                        console.error('Ошибка добавления в очередь:', queueError);
+                    }
+                }
+            }
+        }
+
+        // Добавление поля
+        function addField() {
+            const key = document.getElementById('fieldKey').value.trim();
+            const value = document.getElementById('fieldValue').value;
+            const type = document.getElementById('fieldType').value;
+            
+            if (!key) {
+                showNotification('Введите ключ поля', 'error');
+                return;
+            }
+            
+            let parsedValue;
+            switch (type) {
+                case 'number':
+                    parsedValue = parseFloat(value) || 0;
+                    break;
+                case 'boolean':
+                    parsedValue = value.toLowerCase() === 'true';
+                    break;
+                default:
+                    parsedValue = value;
+            }
+            
+            currentData[key] = parsedValue;
+            updateUI(currentData);
+            
+            document.getElementById('fieldKey').value = '';
+            document.getElementById('fieldValue').value = '';
+            
+            showNotification('Поле добавлено и синхронизировано', 'success');
+            
+            // Автоматическая синхронизация
+            syncData(currentData);
+        }
+
+        // Удаление поля
+        function deleteField(key) {
+            delete currentData[key];
+            updateUI(currentData);
+            showNotification('Поле удалено и синхронизировано', 'success');
+            
+            // Автоматическая синхронизация
+            syncData(currentData);
+        }
+
+        // Загрузка из MinIO
+        async function loadFromMinIO() {
+            try {
+                updateStatus('synced', 'Загрузка из MinIO...');
+                const response = await fetch('/api/data');
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки данных');
+                }
+                
+                const data = await response.json();
+                updateUI(data);
+                await saveToIndexedDB(data);
+                updateStatus('connected', 'Данные загружены из MinIO');
+                showNotification('Данные успешно загружены из MinIO', 'success');
+            } catch (error) {
+                updateStatus('error', 'Ошибка подключения к MinIO');
+                showNotification('Ошибка: ' + error.message, 'error');
+            }
+        }
+
+        // Сохранение в MinIO
+        async function saveToMinIO() {
+            try {
+                const data = parseJSON(document.getElementById('jsonEditor').value);
+                
+                if (data === null) {
+                    showNotification('Некорректный JSON', 'error');
+                    return;
+                }
+                
+                updateStatus('synced', 'Сохранение в MinIO...');
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка сохранения данных');
+                }
+                
+                await saveToIndexedDB(data);
+                updateStatus('connected', 'Данные синхронизированы');
+                showNotification('Данные успешно сохранены в MinIO', 'success');
+            } catch (error) {
+                updateStatus('error', 'Ошибка сохранения');
+                showNotification('Ошибка: ' + error.message, 'error');
+            }
+        }
+
+        // Загрузка из IndexedDB
+        async function loadFromIndexedDB() {
+            try {
+                updateStatus('synced', 'Загрузка из IndexedDB...');
+                const data = await loadFromIndexedDBData();
+                
+                if (data) {
+                    updateUI(data);
+                    updateStatus('connected', 'Данные загружены из IndexedDB');
+                    showNotification('Данные успешно загружены из IndexedDB', 'success');
+                } else {
+                    updateStatus('connected', 'IndexedDB пуст');
+                    showNotification('IndexedDB не содержит данных', 'info');
+                }
+            } catch (error) {
+                updateStatus('error', 'Ошибка загрузки');
+                showNotification('Ошибка: ' + error.message, 'error');
+            }
+        }
+
+        // Авто-сохранение при изменении редактора с задержкой (debounce)
+        let syncTimeout = null;
+        document.getElementById('jsonEditor').addEventListener('input', async () => {
+            const data = parseJSON(document.getElementById('jsonEditor').value);
+            if (data) {
+                currentData = data;
+                renderTree(data, document.getElementById('dataTree'));
+                renderFieldList(data);
+                
+                // Debounce: ждем 1 секунду после последнего изменения перед синхронизацией
+                if (syncTimeout) {
+                    clearTimeout(syncTimeout);
+                }
+                syncTimeout = setTimeout(() => {
+                    syncData(data);
+                }, 1000);
+            }
+        });
+
+        // Инициализация
+        async function init() {
+            try {
+                await openDatabase();
+                
+                // Попытка загрузить из IndexedDB при старте
+                const data = await loadFromIndexedDBData();
+                if (data) {
+                    updateUI(data);
+                } else {
+                    updateUI({});
+                }
+                
+                // Проверяем наличие отложенных изменений и пытаемся синхронизировать
+                const pendingItems = await loadPendingQueue();
+                if (pendingItems.length > 0) {
+                    console.log(`Найдено ${pendingItems.length} отложенных изменений. Попытка синхронизации...`);
+                    showNotification(`Найдено ${pendingItems.length} отложенных изменений. Синхронизация...`, 'info');
+                    setTimeout(() => processSyncQueue(), 1000);
+                } else {
+                    // Проверка доступности MinIO
+                    try {
+                        const testResponse = await fetch('/api/data', { method: 'GET' });
+                        if (testResponse.ok) {
+                            isMinIOAvailable = true;
+                            updateStatus('connected', 'Готов к работе');
+                        } else {
+                            isMinIOAvailable = false;
+                            updateStatus('error', 'MinIO недоступен');
+                        }
+                    } catch (e) {
+                        isMinIOAvailable = false;
+                        updateStatus('error', 'MinIO недоступен');
+                    }
+                }
+                
+                showNotification('Приложение готово к работе', 'success');
+            } catch (error) {
+                updateStatus('error', 'Ошибка инициализации');
+                showNotification('Ошибка: ' + error.message, 'error');
+            }
+        }
+
+        init();
+        
+        // Периодическая проверка доступности MinIO и синхронизация очереди каждые 30 секунд
+        setInterval(async () => {
+            if (!isMinIOAvailable) {
+                const pendingItems = await loadPendingQueue();
+                if (pendingItems.length > 0) {
+                    console.log('Периодическая попытка синхронизации...');
+                    processSyncQueue();
+                } else {
+                    // Проверяем, восстановилось ли соединение
+                    try {
+                        const testResponse = await fetch('/api/data', { method: 'GET' });
+                        if (testResponse.ok) {
+                            isMinIOAvailable = true;
+                            updateStatus('connected', 'Готов к работе');
+                            console.log('Соединение с MinIO восстановлено');
+                        }
+                    } catch (e) {
+                        // MinIO всё ещё недоступен
+                    }
+                }
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
