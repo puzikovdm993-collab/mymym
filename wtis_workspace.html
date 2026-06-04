@@ -1529,6 +1529,7 @@
 <script src="src/matrix/matrix.js"></script>
 <script src="src/onboarding/onboarding.js"></script>
 <script src="src/radialMenu/radialMenu.js"></script>
+<script src="static/js/syncManager.js"></script>
     <script>
 
         // console.log('Новый интерфейс: http://dev.wtis.wfront.svk.sils.local/new_int');
@@ -1538,7 +1539,30 @@
         // console.log('Скачать цель worflow: http://dev.wtis.wfront.svk.sils.local/purpose.png');
         console.log('Скачать логи: http://dev.wtis.wfront.svk.sils.local/logs/requests.log');
         console.log('Скачать логи: http://dev.wtis.wfront.svk.sils.local/logs/app.log');
+        
+        // Инициализация ClientSyncManager
+        const appSyncManager = new ClientSyncManager({
+            serverBaseUrl: '',
+            syncInterval: 30000,
+            statusElementId: 'sync-status-indicator'
+        });
+        
+        // Обработчики событий синхронизации
+        appSyncManager.on('statusChange', (isConnected) => {
+            console.log('[UI] Статус подключения изменён:', isConnected ? 'Онлайн' : 'Офлайн');
+        });
+        
+        appSyncManager.on('syncComplete', (result) => {
+            console.log('[UI] Синхронизация завершена:', result.processed, 'элементов обработано');
+        });
+        
+        appSyncManager.on('error', (error) => {
+            console.error('[UI] Ошибка синхронизации:', error);
+        });
     </script>
+    
+    <!-- Индикатор статуса синхронизации -->
+    <div id="sync-status-indicator" class="sync-status sync-status-disconnected" title="Статус синхронизации">○ Офлайн</div>
 </body>
 </html>
 

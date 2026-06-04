@@ -16,6 +16,10 @@ from functools import wraps
 
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify, send_file, abort, send_from_directory,render_template, session, make_response
+from flask_cors import CORS
+
+# Импортируем SyncManager после определения всех зависимостей (будет инициализирован позже)
+# from src.sync.syncManager import SyncManager  # Раскомментировать при использовании
 
 
 
@@ -106,8 +110,9 @@ def setup_logging(app):  # Теперь функция принимает app к
 
 # Инициализация Flask и логгера
 app = Flask(__name__, static_folder='')
+CORS(app)  # Включаем CORS для всех маршрутов
 app_logger = setup_logging(app)  # Передаем app в функцию
-app_logger.info("Инициализировано Flask-приложение")
+app_logger.info("Инициализировано Flask-приложение с поддержкой CORS")
 
 
 
@@ -195,6 +200,20 @@ def set_minio_client():
     
     return minio_client
 
+
+# ------------------- Глобальная переменная SyncManager -------------------
+sync_manager = None  # Будет инициализирован после set_minio_client()
+
+def get_sync_manager():
+    """Получить экземпляр SyncManager (ленивая инициализация)"""
+    global sync_manager, minio_client, MINIO_BUCKET
+    
+    if sync_manager is None and minio_client is not None:
+        from src.sync.syncManager import SyncManager
+        sync_manager = SyncManager(minio_client, MINIO_BUCKET, app_logger)
+        app_logger.info("SyncManager инициализирован")
+    
+    return sync_manager
 
 
 # ------------------- Декоратор для обработки ошибок MinIO -------------------
@@ -2573,6 +2592,179 @@ def save_modal_states():
         return jsonify({'error': str(e)}), 500
 
 
+# ------------------- Sync API Endpoints -------------------
+
+@app.route('/api/sync/status', methods=['GET'])
+def get_sync_status():
+    """
+    Получить статус синхронизации
+    
+    Returns:
+        JSON: Информация о статусе синхронизации
+    """
+    manager = get_sync_manager()
+    
+    if manager is None:
+        return jsonify({
+            'status': 'not_initialized',
+            'minio_available': False,
+            'queue_size': 0,
+            'message': 'SyncManager not initialized'
+        }), 200
+    
+    status_info = manager.get_status_info()
+    return jsonify(status_info), 200
+
+
+@app.route('/api/sync/process_queue', methods=['POST'])
+def process_sync_queue():
+    """
+    Обработать очередь синхронизации
+    
+    Returns:
+        JSON: Результат обработки очереди
+    """
+    manager = get_sync_manager()
+    
+    if manager is None:
+        return jsonify({
+            'processed': 0,
+            'success': [],
+            'failed': [],
+            'message': 'SyncManager not initialized'
+        }), 200
+    
+    results = manager.process_queue()
+    return jsonify(results), 200
+
+
+@app.route('/api/sync/save', methods=['POST'])
+def universal_save():
+    """
+    Универсальный endpoint для сохранения данных с поддержкой очереди
+    
+    Request JSON:
+        - object_name: имя объекта в MinIO
+        - data: данные для сохранения
+        - use_queue: использовать очередь при ошибке (по умолчанию True)
+    
+    Returns:
+        JSON: Результат сохранения
+    """
+    manager = get_sync_manager()
+    
+    if manager is None:
+        return jsonify({
+            'success': False,
+            'saved_to_minio': False,
+            'queued': False,
+            'error': 'SyncManager not initialized'
+        }), 500
+    
+    data = request.get_json()
+    
+    if not data or 'object_name' not in data or 'data' not in data:
+        return jsonify({
+            'success': False,
+            'error': 'Missing required fields: object_name, data'
+        }), 400
+    
+    object_name = data['object_name']
+    payload = data['data']
+    use_queue = data.get('use_queue', True)
+    
+    result = manager.save_to_minio(object_name, payload, use_queue)
+    return jsonify(result), 200
+
+
+@app.route('/api/sync/load', methods=['POST'])
+def universal_load():
+    """
+    Универсальный endpoint для загрузки данных
+    
+    Request JSON:
+        - object_name: имя объекта в MinIO
+    
+    Returns:
+        JSON: Загруженные данные или ошибка
+    """
+    manager = get_sync_manager()
+    
+    if manager is None:
+        return jsonify({
+            'success': False,
+            'error': 'SyncManager not initialized'
+        }), 500
+    
+    data = request.get_json()
+    
+    if not data or 'object_name' not in data:
+        return jsonify({
+            'success': False,
+            'error': 'Missing required field: object_name'
+        }), 400
+    
+    object_name = data['object_name']
+    result, error = manager.load_from_minio(object_name)
+    
+    if error:
+        return jsonify({
+            'success': False,
+            'error': error
+        }), 404 if 'not found' in error.lower() else 500
+    
+    return jsonify({
+        'success': True,
+        'data': result
+    }), 200
+
+
+@app.route('/api/sync/queue', methods=['GET'])
+def get_sync_queue():
+    """
+    Получить текущую очередь синхронизации
+    
+    Returns:
+        JSON: Список элементов очереди
+    """
+    manager = get_sync_manager()
+    
+    if manager is None:
+        return jsonify({
+            'queue': [],
+            'message': 'SyncManager not initialized'
+        }), 200
+    
+    queue = manager.get_queue()
+    return jsonify({
+        'queue': queue,
+        'queue_size': len(queue)
+    }), 200
+
+
+@app.route('/api/sync/queue/clear', methods=['POST'])
+def clear_sync_queue():
+    """
+    Очистить очередь синхронизации
+    
+    Returns:
+        JSON: Результат очистки
+    """
+    manager = get_sync_manager()
+    
+    if manager is None:
+        return jsonify({
+            'cleared': 0,
+            'message': 'SyncManager not initialized'
+        }), 200
+    
+    count = manager.clear_queue()
+    return jsonify({
+        'cleared': count,
+        'message': f'Cleared {count} items from queue'
+    }), 200
+
+
 if __name__ == '__main__':
 
     # Запускаем сервер
@@ -2580,5 +2772,12 @@ if __name__ == '__main__':
     print(f"Script directory: {script_dir}")
     print(f"Upload folder: {UPLOAD_FOLDER}")
     print(f"Open http://127.0.0.1:15404 in your browser")
+    
+    # Инициализация MinIO клиента
     set_minio_client()
+    
+    # Инициализация SyncManager
+    get_sync_manager()
+    app_logger.info("SyncManager готов к работе")
+    
     app.run(debug=True, host='0.0.0.0', port=15404)
