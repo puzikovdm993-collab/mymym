@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пример кэширования Flask</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Пример кэширования в браузере</h1>
+        <p>Эта страница демонстрирует работу кэширования HTML, CSS и JS файлов.</p>
+        <p>При первом загрузке файлы скачиваются с сервера.</p>
+        <p>При обновлении страницы (F5) файлы загружаются из кэша браузера.</p>
+        
+        <div id="info" class="info-box">
+            <h2>Информация о загрузке</h2>
+            <p id="load-status">Загрузка...</p>
+            <p id="timestamp"></p>
+        </div>
+        
+        <button id="check-cache">Проверить кэш</button>
+    </div>
+    
+    <script src="/static/script.js"></script>
+</body>
+</html>
