@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пример кэширования в браузере</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Демонстрация кэширования в браузере</h1>
+        
+        <div class="info-box">
+            <h2>Как это работает:</h2>
+            <ul>
+                <li><strong>HTML страница</strong> - не кэшируется (или кэшируется на короткое время), чтобы браузер всегда загружал актуальную версию с сервера</li>
+                <li><strong>CSS и JS файлы</strong> - кэшируются на 1 год с заголовком <code>immutable</code>, что означает, что браузер будет загружать их из кэша при обновлении страницы (F5)</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Проверка работы:</h2>
+            <ol>
+                <li>Откройте инструменты разработчика (F12)</li>
+                <li>Перейдите на вкладку <strong>Network (Сеть)</strong></li>
+                <li>Обновите страницу (F5)</li>
+                <li>Вы увидите, что:
+                    <ul>
+                        <li>HTML файл загружается с сервера (статус 200 или 304)</li>
+                        <li>CSS и JS файлы загружаются из кэша (статус <strong>200 (from cache)</strong> или <strong>304 Not Modified</strong>)</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <div id="dynamic-content" class="dynamic-box">
+            <h2>Динамический контент от JavaScript:</h2>
+            <p id="timestamp"></p>
+            <p id="cache-info"></p>
+        </div>
+
+        <button id="update-btn">Показать текущее время</button>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
