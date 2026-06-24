@@ -1,62 +1,100 @@
-// Скрипт для демонстрации кэширования
+// Проверка статуса кэширования через AppCache
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const checkBtn = document.getElementById('check-btn');
 
-document.addEventListener('DOMContentLoaded', function() {
-    const loadStatus = document.getElementById('load-status');
-    const timestamp = document.getElementById('timestamp');
-    const checkCacheBtn = document.getElementById('check-cache');
-    
-    // Отображаем текущее время загрузки
-    const now = new Date();
-    timestamp.textContent = `Время загрузки: ${now.toLocaleTimeString('ru-RU')}`;
-    
-    // Проверяем, загружено ли из кэша
-    if (performance.navigation.type === performance.navigation.TYPE_BACK_FORWARD) {
-        loadStatus.textContent = 'Страница загружена из кэша (навигация назад/вперед)';
-        loadStatus.className = 'cached';
-    } else if (performance.navigation.type === performance.navigation.TYPE_RELOAD) {
-        loadStatus.textContent = 'Страница обновлена (F5) - должна загрузиться из кэша';
-        loadStatus.className = 'cached';
-    } else {
-        loadStatus.textContent = 'Страница загружена с сервера (первый визит)';
-        loadStatus.className = 'from-server';
-    }
-    
-    // Обработчик кнопки проверки кэша
-    checkCacheBtn.addEventListener('click', function() {
-        checkCacheStatus();
+function log(message) {
+    const p = document.createElement('p');
+    p.textContent = message;
+    logEl.appendChild(p);
+    console.log(message);
+}
+
+// Обработчики событий AppCache
+if (window.applicationCache) {
+    const appCache = window.applicationCache;
+
+    appCache.addEventListener('cached', () => {
+        log('✓ Страница закэширована!');
+        statusEl.textContent = 'В кэше';
+        statusEl.style.color = 'green';
     });
-    
-    // Функция проверки статуса кэша
-    function checkCacheStatus() {
-        const resources = performance.getEntriesByType('resource');
-        let cachedCount = 0;
-        let serverCount = 0;
-        
-        resources.forEach(resource => {
-            if (resource.transferSize === 0 || resource.encodedBodySize === 0) {
-                cachedCount++;
-            } else {
-                serverCount++;
-            }
-        });
-        
-        const infoBox = document.querySelector('.info-box');
-        const summary = document.createElement('p');
-        summary.innerHTML = `<strong>Статистика:</strong> Из кэша: ${cachedCount} | С сервера: ${serverCount}`;
-        summary.style.marginTop = '10px';
-        summary.style.color = '#667eea';
-        infoBox.appendChild(summary);
-        
-        // Выводим детальную информацию в консоль
-        console.log('=== Статус кэширования ресурсов ===');
-        resources.forEach(resource => {
-            const fromCache = resource.transferSize === 0 || resource.encodedBodySize === 0;
-            console.log(`${resource.name}: ${fromCache ? 'ИЗ КЭША' : 'С СЕРВЕРА'} (${resource.transferSize} байт)`);
-        });
-        
-        alert(`Проверка завершена!\nИз кэша: ${cachedCount} файлов\nС сервера: ${serverCount} файлов\n\nОткройте консоль браузера (F12) для детальной информации.`);
+
+    appCache.addEventListener('updateready', () => {
+        log('✓ Доступна новая версия. Обновите страницу (F5).');
+        statusEl.textContent = 'Доступно обновление';
+        statusEl.style.color = 'orange';
+        if (confirm('Доступна новая версия. Перезагрузить?')) {
+            window.location.reload();
+        }
+    });
+
+    appCache.addEventListener('error', () => {
+        log('✗ Ошибка кэширования');
+        statusEl.textContent = 'Ошибка';
+        statusEl.style.color = 'red';
+    });
+
+    appCache.addEventListener('checking', () => {
+        log('Проверка обновлений...');
+    });
+
+    appCache.addEventListener('downloading', () => {
+        log('Загрузка новой версии...');
+    });
+
+    appCache.addEventListener('progress', (e) => {
+        log(`Загружено файлов: ${e.loaded}`);
+    });
+
+    appCache.addEventListener('noupdate', () => {
+        log('Обновлений нет, используем кэш');
+        statusEl.textContent = 'Актуально (кэш)';
+        statusEl.style.color = 'blue';
+    });
+
+    appCache.addEventListener('obsolete', () => {
+        log('Кэш устарел');
+        statusEl.textContent = 'Устарело';
+        statusEl.style.color = 'gray';
+    });
+} else {
+    log('AppCache не поддерживается браузером');
+    statusEl.textContent = 'Не поддерживается';
+    statusEl.style.color = 'red';
+}
+
+// Проверка соединения
+checkBtn.addEventListener('click', async () => {
+    try {
+        const response = await fetch('/api/status', { cache: 'no-cache' });
+        if (response.ok) {
+            log('✓ Сервер доступен');
+            statusEl.textContent = 'Онлайн';
+            statusEl.style.color = 'green';
+        }
+    } catch (e) {
+        log('✗ Сервер недоступен (работаем из кэша)');
+        statusEl.textContent = 'Офлайн (кэш)';
+        statusEl.style.color = 'orange';
     }
-    
-    // Автоматическая проверка через 2 секунды
-    setTimeout(checkCacheStatus, 2000);
+});
+
+// Автоматическая проверка при загрузке
+window.addEventListener('load', () => {
+    log('Страница загружена');
+    // Проверяем соединение
+    fetch('/api/status', { cache: 'no-cache' })
+        .then(response => {
+            if (response.ok) {
+                log('✓ Сервер доступен');
+                statusEl.textContent = 'Онлайн';
+                statusEl.style.color = 'green';
+            }
+        })
+        .catch(() => {
+            log('✗ Сервер недоступен (работаем из кэша)');
+            statusEl.textContent = 'Офлайн (кэш)';
+            statusEl.style.color = 'orange';
+        });
 });

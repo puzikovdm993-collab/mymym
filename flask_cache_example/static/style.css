@@ -1,90 +1,72 @@
-/* Стили для примера кэширования */
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: Arial, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    margin: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
 }
 
 .container {
     background: white;
-    border-radius: 15px;
     padding: 40px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    max-width: 600px;
-    width: 100%;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    max-width: 500px;
+    text-align: center;
 }
 
 h1 {
     color: #333;
     margin-bottom: 20px;
-    text-align: center;
-    font-size: 28px;
 }
 
 p {
     color: #666;
     line-height: 1.6;
-    margin-bottom: 15px;
 }
 
-.info-box {
-    background: #f8f9fa;
-    border-left: 4px solid #667eea;
-    padding: 20px;
-    margin: 20px 0;
+#status {
+    font-weight: bold;
+    padding: 5px 10px;
     border-radius: 5px;
+    background: #f0f0f0;
 }
 
-.info-box h2 {
-    color: #667eea;
-    font-size: 20px;
-    margin-bottom: 10px;
-}
-
-.info-box p {
-    color: #555;
-    margin: 5px 0;
-}
-
-#check-cache {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+button {
+    background: #667eea;
     color: white;
     border: none;
-    padding: 12px 30px;
-    font-size: 16px;
-    border-radius: 25px;
+    padding: 12px 24px;
+    border-radius: 5px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    display: block;
-    margin: 20px auto 0;
+    font-size: 16px;
+    margin-top: 20px;
+    transition: background 0.3s;
 }
 
-#check-cache:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+button:hover {
+    background: #5568d3;
 }
 
-#check-cache:active {
-    transform: translateY(0);
+#log {
+    margin-top: 20px;
+    text-align: left;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 14px;
 }
 
-.cached {
-    color: #28a745 !important;
-    font-weight: bold;
+#log p {
+    margin: 5px 0;
+    padding: 5px;
+    border-bottom: 1px solid #eee;
 }
 
-.from-server {
-    color: #dc3545 !important;
-    font-weight: bold;
+#log p:last-child {
+    border-bottom: none;
 }

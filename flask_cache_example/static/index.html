@@ -1,27 +1,20 @@
 <!DOCTYPE html>
-<html lang="ru">
+<!-- Указываем файл манифеста для кэширования -->
+<html lang="ru" manifest="cache.manifest">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Пример кэширования Flask</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Flask Cache Example (AppCache)</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Пример кэширования в браузере</h1>
-        <p>Эта страница демонстрирует работу кэширования HTML, CSS и JS файлов.</p>
-        <p>При первом загрузке файлы скачиваются с сервера.</p>
-        <p>При обновлении страницы (F5) файлы загружаются из кэша браузера.</p>
-        
-        <div id="info" class="info-box">
-            <h2>Информация о загрузке</h2>
-            <p id="load-status">Загрузка...</p>
-            <p id="timestamp"></p>
-        </div>
-        
-        <button id="check-cache">Проверить кэш</button>
+        <h1>Кэширование через AppCache</h1>
+        <p>Эта страница работает даже при выключенном сервере!</p>
+        <p>Статус: <span id="status">Проверка...</span></p>
+        <button id="check-btn">Проверить соединение</button>
+        <div id="log"></div>
     </div>
-    
-    <script src="/static/script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

@@ -1,40 +1,5 @@
 ```
-# Dependencies
-.venv/
-venv/
-__pycache__/
-
-# Logs and temp files
-*.log
-*.tmp
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Python cache
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Build artifacts
-dist/
-build/
-*.egg-info/
-
-# OS generated files
-.DS_Store
-Thumbs.db
+# Service worker and cache manifest (generated files)
+flask_cache_example/static/sw.js
+flask_cache_example/static/cache.manifest
 ```
