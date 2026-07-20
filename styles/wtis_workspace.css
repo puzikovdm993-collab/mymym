@@ -2502,6 +2502,19 @@ to  {
     border-right: 2px solid var(--border-color);
     box-shadow: var(--shadow-sm);
 }
+.toolbar-loader {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+    padding: 5px 0;
+}
+.toolbar-loader.active {
+    display: flex;
+}
+#imageLoaderContainer.toolbar-loader {
+    margin-left: 0;
+}
 .tool-btn  {
     width: 34px;
     height: 34px;
@@ -3253,12 +3266,16 @@ body:not(.light-theme) .tour-highlighted  {
   height: 12px;
   border-radius: 50%;
   display: block;
-  margin:15px auto;
+  margin: 0;
   position: relative;
   color: #6ebeff;
   box-sizing: border-box;
   animation: animloader 1s linear infinite alternate;
   background: currentColor;
+}
+
+.toolbar-loader .loader {
+  margin: 0;
 }
 
 @keyframes animloader {
