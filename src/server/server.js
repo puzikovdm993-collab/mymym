@@ -594,6 +594,12 @@ function refreshBothPanelsToServer() {
 // Функция загрузки файла с сервера (используем полный путь)
 function loadImageFromServer(filePath) {
     showLoadMessage(`Загрузка изображения...`, 'info');
+    
+    // Показываем спиннер загрузки
+    const loaderContainer = document.getElementById('imageLoaderContainer');
+    if (loaderContainer) {
+        loaderContainer.classList.add('active');
+    }
 
     // fetch(`/download_minio/${encodeURIComponent(filePath)}`)
     //     .then(response => {
@@ -642,25 +648,37 @@ function loadImageFromServer(filePath) {
             }
 
     
-            createFileFromImageData(blob.filename, 
-                matrix, 
-                blob.height, 
-                blob.width, 
-                blob.min_value, 
-                blob.max_value,
-                254
-            );
+            // Добавляем задержку через setTimeout, чтобы было видно спиннер загрузки
+            setTimeout(() => {
+                createFileFromImageData(blob.filename, 
+                    matrix, 
+                    blob.height, 
+                    blob.width, 
+                    blob.min_value, 
+                    blob.max_value,
+                    254
+                );
 
-
-
-            closeLoadFromServerModal();
-            showLoadMessage(`Изображение загружено`, 'success');
-            setTimeout(hideLoadMessage, 2000);
+                closeLoadFromServerModal();
+                showLoadMessage(`Изображение загружено`, 'success');
+                
+                // Скрываем спиннер загрузки
+                if (loaderContainer) {
+                    loaderContainer.classList.remove('active');
+                }
+                
+                setTimeout(hideLoadMessage, 2000);
+            }, 1000); // Задержка 1 секунда для демонстрации спиннера
         })
        
         .catch(error => {
             console.error('Ошибка загрузки:', error);
             showLoadMessage(`Ошибка: ${error.message}`, 'error');
+            
+            // Скрываем спиннер при ошибке
+            if (loaderContainer) {
+                loaderContainer.classList.remove('active');
+            }
         });
 }
 
