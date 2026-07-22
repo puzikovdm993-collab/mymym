@@ -817,6 +817,14 @@ body  {
 
 }
 
+#overlayCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 10;
+}
+
 #imageCanvas  {
     background: #1e1e1e;
     border: 1px solid var(--color-border);

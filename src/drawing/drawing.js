@@ -305,7 +305,14 @@ function drawProfile(profile) {
 function drawProfileInProgress(x1, y1, x2, y2) {
      const file = getActiveFile();
     if (!file) return;
-    const ctx = file.ctx;
+    
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (!overlayCanvas) return;
+    
+    const ctx = overlayCanvas.getContext('2d');
+    
+    // Очищаем overlay canvas перед рисованием
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
     // Линия красным цветом
     ctx.strokeStyle = '#ff0000';
@@ -323,8 +330,4 @@ function drawProfileInProgress(x1, y1, x2, y2) {
     ctx.beginPath();
     ctx.arc(x2, y2, 5, 0, 2 * Math.PI);
     ctx.fill();
-    
-
-
-
 }
