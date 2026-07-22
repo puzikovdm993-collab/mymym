@@ -309,6 +309,13 @@ function drawProfileInProgress(x1, y1, x2, y2) {
     const overlayCanvas = document.getElementById('overlayCanvas');
     if (!overlayCanvas) return;
     
+    // Синхронизируем размеры overlayCanvas с canvasHost
+    const canvasHost = document.getElementById('canvasHost');
+    if (canvasHost) {
+        overlayCanvas.width = canvasHost.clientWidth;
+        overlayCanvas.height = canvasHost.clientHeight;
+    }
+    
     const ctx = overlayCanvas.getContext('2d');
     
     // Очищаем overlay canvas перед рисованием
