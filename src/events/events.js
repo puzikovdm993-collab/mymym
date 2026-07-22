@@ -89,6 +89,126 @@ function getCanvasCoordsClamped(e) {
     return { x, y };
 }
 
+// Глобальные обработчики для profile tool (чтобы рисование не прерывалось при выходе за canvas)
+function handleGlobalMouseMove(e) {
+    if (currentTool !== 'profile' || !isDrawing) return;
+    
+    const file = getActiveFile();
+    if (!file || !file.canvas) return;
+
+    ctx = file.ctx;
+    canvas = file.canvas;
+
+    // Получаем координаты относительно окна, затем переводим в координаты canvas
+    const rect = file.canvas.getBoundingClientRect();
+    let x = Math.floor((e.clientX - rect.left) / zoom);
+    let y = Math.floor((e.clientY - rect.top) / zoom);
+    
+    // Ограничиваем координаты пределами overlayCanvas
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (overlayCanvas) {
+        x = Math.max(0, Math.min(overlayCanvas.width - 1, x));
+        y = Math.max(0, Math.min(overlayCanvas.height - 1, y));
+    }
+    
+    // Дополнительно ограничиваем пределами изображения
+    x = Math.max(0, Math.min(file.width - 1, x));
+    y = Math.max(0, Math.min(file.height - 1, y));
+    
+    const coords = { x, y };
+    
+    if (dom.cursorPos) {
+        dom.cursorPos.textContent = `X: ${coords.x}, Y: ${coords.y}`;
+        if (coords.y >= 0 && coords.y < file.height && coords.x >= 0 && coords.x < file.width) {
+            document.getElementById('cursorMatrixData').textContent = `d = ${file.matrix[coords.y][coords.x]}`;
+        }
+    }
+
+    if (dragMode !== 'none') {
+        // Режим перетаскивания существующего профиля
+        redrawFromHistory();
+
+        if (dragMode === 'start') {
+            currentProfile.x1 = coords.x;
+            currentProfile.y1 = coords.y;
+        } else if (dragMode === 'end') {
+            currentProfile.x2 = coords.x;
+            currentProfile.y2 = coords.y;
+        } else if (dragMode === 'whole') {
+            const dx = coords.x - dragOffsetX - originalProfile.x1;
+            const dy = coords.y - dragOffsetY - originalProfile.y1;
+            currentProfile.x1 = originalProfile.x1 + dx;
+            currentProfile.y1 = originalProfile.y1 + dy;
+            currentProfile.x2 = originalProfile.x2 + dx;
+            currentProfile.y2 = originalProfile.y2 + dy;
+        }
+        drawProfile(currentProfile);
+        updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
+    } else {
+        // Рисование нового профиля
+        redrawFromHistory();
+        drawProfileInProgress(startX, startY, coords.x, coords.y);
+        updateGraph(startX, startY, coords.x, coords.y);
+    }
+    
+    lastX = coords.x;
+    lastY = coords.y;
+}
+
+function handleGlobalMouseUp(e) {
+    if (currentTool !== 'profile' || !isDrawing) return;
+    
+    const file = getActiveFile();
+    if (!file || !file.canvas) return;
+
+    ctx = file.ctx;
+    canvas = file.canvas;
+
+    // Получаем координаты относительно окна, затем переводим в координаты canvas
+    const rect = file.canvas.getBoundingClientRect();
+    let x = Math.floor((e.clientX - rect.left) / zoom);
+    let y = Math.floor((e.clientY - rect.top) / zoom);
+    
+    // Ограничиваем координаты пределами overlayCanvas
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (overlayCanvas) {
+        x = Math.max(0, Math.min(overlayCanvas.width - 1, x));
+        y = Math.max(0, Math.min(overlayCanvas.height - 1, y));
+    }
+    
+    // Дополнительно ограничиваем пределами изображения
+    x = Math.max(0, Math.min(file.width - 1, x));
+    y = Math.max(0, Math.min(file.height - 1, y));
+    
+    const coords = { x, y };
+
+    if (dragMode !== 'none') {
+        // Завершаем перетаскивание – ничего не сохраняем, просто выходим
+        dragMode = 'none';
+        originalProfile = null;
+    } else {
+        // Завершаем создание нового профиля
+        if (lassoPoints.length > 0 || true) {
+            // Сохраняем координаты
+            currentProfile = {
+                x1: startX,
+                y1: startY,
+                x2: lastX,
+                y2: lastY
+            };
+            // Перерисовываем финальную версию
+            redrawFromHistory();
+            drawProfile(currentProfile);
+        }
+    }
+    
+    isDrawing = false;
+    
+    // Удаляем глобальные обработчики
+    window.removeEventListener('mousemove', handleGlobalMouseMove);
+    window.removeEventListener('mouseup', handleGlobalMouseUp);
+}
+
 // Обработка нажатия кнопки мыши
 function handleMouseDown(e) {
     const file = getActiveFile();
@@ -150,6 +270,10 @@ function handleMouseDown(e) {
             // lassoPoints = [{x: startX, y: startY}];
             isLassoClosed = false;
             isDrawing = true;
+            
+            // Добавляем глобальные обработчики для profile tool
+            window.addEventListener('mousemove', handleGlobalMouseMove);
+            window.addEventListener('mouseup', handleGlobalMouseUp);
             break;
         }
         case 'lasso':
@@ -178,49 +302,13 @@ function handleMouseMove(e) {
         document.getElementById('cursorMatrixData').textContent = `d = ${file.matrix[coords.y][coords.x]}`;
     }
 
+    // Если рисуем профиль, глобальные обработчики уже работают, выходим
+    if (currentTool === 'profile' && isDrawing) return;
+
     if (!isDrawing) return;
 
     // Обработка рисования для различных инструментов
     switch (currentTool) {
-
-        case 'profile': {
-            // const file = getActiveFile();
-            // if (!file) break;
-            // ctx = file.ctx;
-            // canvas = file.canvas;
-
-            const coords = getCanvasCoordsClamped(e);
-
-            if (!isDrawing) break;
-
-            if (dragMode !== 'none') {
-                // Режим перетаскивания существующего профиля
-                redrawFromHistory(); // восстанавливаем основное изображение
-
-                if (dragMode === 'start') {
-                    currentProfile.x1 = coords.x;
-                    currentProfile.y1 = coords.y;
-                } else if (dragMode === 'end') {
-                    currentProfile.x2 = coords.x;
-                    currentProfile.y2 = coords.y;
-                } else if (dragMode === 'whole') {
-                    const dx = coords.x - dragOffsetX - originalProfile.x1;
-                    const dy = coords.y - dragOffsetY - originalProfile.y1;
-                    currentProfile.x1 = originalProfile.x1 + dx;
-                    currentProfile.y1 = originalProfile.y1 + dy;
-                    currentProfile.x2 = originalProfile.x2 + dx;
-                    currentProfile.y2 = originalProfile.y2 + dy;
-                }
-                drawProfile(currentProfile);      // рисуем перемещаемый профиль
-                updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
-            } else {
-                // Рисование нового профиля
-                redrawFromHistory();
-                 drawProfileInProgress(startX, startY, coords.x, coords.y);
-                updateGraph(startX, startY, coords.x, coords.y); // сразу обновляем график
-            }
-            break;
-        }            
         case 'lasso':
             //redrawFromHistory();
             matrixToImage();
@@ -257,6 +345,9 @@ function handleMouseUp(e) {
     if (!file || !file.canvas) return;
     if (e.currentTarget !== file.canvas) return;
 
+    // Для profile tool обработка уже выполнена в handleGlobalMouseUp
+    if (currentTool === 'profile') return;
+
     if (!isDrawing) return;
 
     ctx = file.ctx;
@@ -267,34 +358,6 @@ function handleMouseUp(e) {
 
     // Завершение рисования для различных инструментов
     switch (currentTool) {
-        case 'profile': {
-            const file = getActiveFile();
-            if (!file) break;
-
-            if (!isDrawing) break;
-
-            if (dragMode !== 'none') {
-                // Завершаем перетаскивание – ничего не сохраняем, просто выходим
-                dragMode = 'none';
-                originalProfile = null;
-            } else {
-                // Завершаем создание нового профиля
-                if (lassoPoints.length > 0) {
-                    // Сохраняем координаты
-                    currentProfile = {
-                        x1: startX,
-                        y1: startY,
-                        x2: lastX,
-                        y2: lastY
-                    };
-                    // Перерисовываем финальную версию
-                    redrawFromHistory();
-                    drawProfile(currentProfile);
-                }
-            }
-            isDrawing = false;
-            break;
-        }
         case 'lasso': {
             // Завершение создания лассо
             if (lassoPoints.length < 2) {
