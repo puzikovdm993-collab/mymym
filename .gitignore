@@ -1,1 +1,1 @@
-Nothing needs to be added to the .gitignore file since the changes only include source code files (.js files) without any build artifacts, dependencies, or temporary files that should be ignored.
+(src/events/events.js)

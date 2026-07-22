@@ -294,6 +294,19 @@ function handleMouseDown(e) {
             isLassoClosed = false;
             isDrawing = true;
             break;
+        case 'select':
+            // Начало создания прямоугольного выделения
+            // Если зажат Ctrl, не сбрасываем предыдущее выделение
+            if (!e.ctrlKey) {
+                previousSelections = []; // Очищаем предыдущие выделения
+            } else {
+                // Сохраняем текущее выделение в массив предыдущих
+                if (file.selection && file.selection.length > 0) {
+                    previousSelections.push([...file.selection]);
+                }
+            }
+            isDrawing = true;
+            break;
     }
 }
 
@@ -335,7 +348,6 @@ function handleMouseMove(e) {
             drawLasso(lassoPoints, coords.x, coords.y);
             break;
         case 'select':
-
                 redrawFromHistory();
                 
                 // Отрисовка предыдущих выделений (если были с Ctrl)
@@ -499,7 +511,34 @@ function handleMouseUp(e) {
             };
             if (selection.w > 0 && selection.h > 0) {
                 selectionData = ctx.getImageData(selection.x, selection.y, selection.w, selection.h);
+                
+                // Вычисляем точки внутри прямоугольника
+                const newSelectionPoints = [];
+                for (let y = selection.y; y < selection.y + selection.h; y++) {
+                    for (let x = selection.x; x < selection.x + selection.w; x++) {
+                        newSelectionPoints.push([x, y]);
+                    }
+                }
+                
+                // Если было выделение с Ctrl, объединяем с предыдущими
+                if (previousSelections.length > 0) {
+                    // Добавляем новые точки к предыдущим
+                    for (const prevSel of previousSelections) {
+                        for (const point of prevSel) {
+                            newSelectionPoints.push(point);
+                        }
+                    }
+                    // Уникализация точек
+                    file.selection = [...new Set(newSelectionPoints.map(JSON.stringify))].map(JSON.parse);
+                } else {
+                    file.selection = newSelectionPoints;
+                }
+                
+                saveState();
             }
+            
+            // Очищаем массив предыдущих выделений после завершения
+            previousSelections = [];
             break;
         }
 
