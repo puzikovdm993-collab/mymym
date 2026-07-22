@@ -144,6 +144,20 @@ function handleGlobalMouseMove(e) {
         }
         drawProfile(currentProfile);
         updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
+    } else if (selectedPoint) {
+        // Режим перемещения выбранной точки профиля
+        redrawFromHistory();
+        
+        if (selectedPoint === 'start') {
+            currentProfile.x1 = coords.x;
+            currentProfile.y1 = coords.y;
+        } else if (selectedPoint === 'end') {
+            currentProfile.x2 = coords.x;
+            currentProfile.y2 = coords.y;
+        }
+        
+        drawProfile(currentProfile);
+        updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
     } else {
         // Рисование нового профиля
         redrawFromHistory();
@@ -183,9 +197,21 @@ function handleGlobalMouseUp(e) {
     const coords = { x, y };
 
     if (dragMode !== 'none') {
-        // Завершаем перетаскивание – ничего не сохраняем, просто выходим
+        // Завершаем перетаскивание всего профиля – сохраняем изменения в историю
         dragMode = 'none';
         originalProfile = null;
+        saveState(); // Сохраняем состояние после перемещения
+        // Восстанавливаем курсор
+        if (file.canvas) {
+            file.canvas.style.cursor = 'crosshair';
+        }
+    } else if (selectedPoint) {
+        // Завершаем перемещение выбранной точки - сбрасываем выбор (второй клик)
+        selectedPoint = null;
+        saveState(); // Сохраняем состояние после перемещения точки
+        if (file.canvas) {
+            file.canvas.style.cursor = 'crosshair';
+        }
     } else {
         // Завершаем создание нового профиля
         if (lassoPoints.length > 0 || true) {
@@ -199,10 +225,22 @@ function handleGlobalMouseUp(e) {
             // Перерисовываем финальную версию
             redrawFromHistory();
             drawProfile(currentProfile);
+            saveState(); // Сохраняем состояние после создания профиля
         }
     }
     
     isDrawing = false;
+    
+    // Очищаем overlay canvas от подсветки
+    if (overlayCanvas) {
+        const overlayCtx = overlayCanvas.getContext('2d');
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+    
+    // Восстанавливаем курсор
+    if (file.canvas) {
+        file.canvas.style.cursor = 'crosshair';
+    }
     
     // Удаляем глобальные обработчики
     window.removeEventListener('mousemove', handleGlobalMouseMove);
@@ -237,21 +275,35 @@ function handleMouseDown(e) {
             const coords = getCanvasCoordsClamped(e);
             const threshold = Math.max(10 / zoom, 5); // порог захвата
 
+            // Если уже выбрана точка для перемещения, начинаем её перемещение
+            if (selectedPoint) {
+                isDrawing = true;
+                file.canvas.style.cursor = 'move';
+                // Добавляем глобальные обработчики для перемещения точки
+                window.addEventListener('mousemove', handleGlobalMouseMove);
+                window.addEventListener('mouseup', handleGlobalMouseUp);
+                break;
+            }
+
             // Проверяем, есть ли уже профиль и не перетаскиваем ли мы его
-            if (currentProfile) {
+            if (currentProfile && !selectedPoint) {
                 const distStart = Math.hypot(coords.x - currentProfile.x1, coords.y - currentProfile.y1);
                 const distEnd = Math.hypot(coords.x - currentProfile.x2, coords.y - currentProfile.y2);
                 const distLine = distanceToSegment(coords.x, coords.y, currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
 
                 if (distStart < threshold) {
-                    // Начинаем перетаскивать начало
-                    dragMode = 'start';
-                    isDrawing = true;
+                    // Выбираем начальную точку для перемещения (первый клик)
+                    selectedPoint = 'start';
+                    isDrawing = false; // Не рисуем новый профиль
+                    file.canvas.style.cursor = 'move';
+                    // Не добавляем обработчики здесь, они добавятся при следующем mousedown
                     break;
                 } else if (distEnd < threshold) {
-                    // Перетаскиваем конец
-                    dragMode = 'end';
-                    isDrawing = true;
+                    // Выбираем конечную точку для перемещения (первый клик)
+                    selectedPoint = 'end';
+                    isDrawing = false; // Не рисуем новый профиль
+                    file.canvas.style.cursor = 'move';
+                    // Не добавляем обработчики здесь, они добавятся при следующем mousedown
                     break;
                 } else if (distLine < threshold) {
                     // Перемещаем весь профиль
@@ -260,6 +312,7 @@ function handleMouseDown(e) {
                     dragOffsetY = coords.y - currentProfile.y1;
                     originalProfile = { ...currentProfile };
                     isDrawing = true;
+                    file.canvas.style.cursor = 'move';
                     break;
                 }
             }
@@ -270,6 +323,9 @@ function handleMouseDown(e) {
             // lassoPoints = [{x: startX, y: startY}];
             isLassoClosed = false;
             isDrawing = true;
+            
+            // Сбрасываем курсор при создании нового профиля
+            file.canvas.style.cursor = 'crosshair';
             
             // Добавляем глобальные обработчики для profile tool
             window.addEventListener('mousemove', handleGlobalMouseMove);
@@ -284,6 +340,24 @@ function handleMouseDown(e) {
             isLassoClosed = false;
             isDrawing = true;
             break;
+        case 'select': {
+            // Начало прямоугольного выделения
+            const file = getActiveFile();
+            if (!file) break;
+            
+            matrixToImage();
+            
+            // Сохраняем начальную точку и модификаторы
+            isDrawing = true;
+            selectStartX = startX;
+            selectStartY = startY;
+            break;
+        }
+    }
+    
+    // Сброс курсора при начале рисования/выделения
+    if (isDrawing && file.canvas) {
+        file.canvas.style.cursor = 'crosshair';
     }
 }
 
@@ -305,6 +379,36 @@ function handleMouseMove(e) {
     // Если рисуем профиль, глобальные обработчики уже работают, выходим
     if (currentTool === 'profile' && isDrawing) return;
 
+    // Проверка наведения на профиль для изменения курсора (только если не рисуем и не перемещаем точку)
+    if (currentTool === 'profile' && !isDrawing && currentProfile && !selectedPoint) {
+        const threshold = Math.max(10 / zoom, 5);
+        const distStart = Math.hypot(coords.x - currentProfile.x1, coords.y - currentProfile.y1);
+        const distEnd = Math.hypot(coords.x - currentProfile.x2, coords.y - currentProfile.y2);
+        const distLine = distanceToSegment(coords.x, coords.y, currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
+        
+        let hoverOnProfile = false;
+        if (distStart < threshold || distEnd < threshold || distLine < threshold) {
+            file.canvas.style.cursor = 'move';
+            hoverOnProfile = true;
+        } else {
+            file.canvas.style.cursor = 'crosshair';
+        }
+        
+        // Отрисовка подсветки точек только при наведении
+        redrawFromHistory();
+        drawProfile(currentProfile);
+        if (hoverOnProfile) {
+            drawProfileHover(coords.x, coords.y);
+        }
+        return;
+    }
+    
+    // Если выбрана точка для перемещения, обновляем курсор
+    if (currentTool === 'profile' && selectedPoint) {
+        file.canvas.style.cursor = 'move';
+        return;
+    }
+
     if (!isDrawing) return;
 
     // Обработка рисования для различных инструментов
@@ -324,15 +428,31 @@ function handleMouseMove(e) {
             }
             drawLasso(lassoPoints, coords.x, coords.y);
             break;
-        case 'select':
-
-                redrawFromHistory();
-                ctx.strokeStyle = '#0078d7';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                ctx.strokeRect(startX, startY, coords.x - startX, coords.y - startY);
-                ctx.setLineDash([]);
-                break;
+        case 'select': {
+            // Прямоугольное выделение - процесс рисования
+            const file = getActiveFile();
+            if (!file) break;
+            
+            redrawFromHistory();
+            
+            // Определяем координаты с учётом модификаторов
+            let endX = coords.x;
+            let endY = coords.y;
+            
+            // Shift - квадрат 1:1
+            if (e.shiftKey) {
+                const size = Math.max(Math.abs(endX - selectStartX), Math.abs(endY - selectStartY));
+                endX = selectStartX + Math.sign(endX - selectStartX) * size;
+                endY = selectStartY + Math.sign(endY - selectStartY) * size;
+            }
+            
+            ctx.strokeStyle = '#0078d7';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(selectStartX, selectStartY, endX - selectStartX, endY - selectStartY);
+            ctx.setLineDash([]);
+            break;
+        }
     }
 
     lastX = coords.x;
@@ -443,14 +563,89 @@ function handleMouseUp(e) {
 
         case 'select': {
             // Создание прямоугольного выделения
-            selection = {
-                x: Math.min(startX, coords.x),
-                y: Math.min(startY, coords.y),
-                w: Math.abs(coords.x - startX),
-                h: Math.abs(coords.y - startY)
-            };
-            if (selection.w > 0 && selection.h > 0) {
-                selectionData = ctx.getImageData(selection.x, selection.y, selection.w, selection.h);
+            const file = getActiveFile();
+            if (!file) break;
+            
+            // Определяем координаты с учётом модификаторов
+            let endX = coords.x;
+            let endY = coords.y;
+            
+            // Shift - квадрат 1:1 (при отпускании тоже учитываем)
+            if (e.shiftKey) {
+                const size = Math.max(Math.abs(endX - selectStartX), Math.abs(endY - selectStartY));
+                endX = selectStartX + Math.sign(endX - selectStartX) * size;
+                endY = selectStartY + Math.sign(endY - selectStartY) * size;
+            }
+            
+            // Вычисляем параметры прямоугольника
+            const x = Math.min(selectStartX, endX);
+            const y = Math.min(selectStartY, endY);
+            const w = Math.abs(endX - selectStartX);
+            const h = Math.abs(endY - selectStartY);
+            
+            if (w > 0 && h > 0) {
+                // Получаем все точки внутри нового прямоугольника
+                const newRectPoints = calculatePointsInsideRectangle(x, y, w, h);
+                
+                // Обработка модификаторов клавиш
+                if (e.ctrlKey) {
+                    // ДОБАВИТЬ к выделению (Union)
+                    if (file.selection && file.selection.length > 0) {
+                        const existingSet = new Set(file.selection.map(p => `${p[0]},${p[1]}`));
+                        const combinedPoints = [...file.selection];
+                        
+                        newRectPoints.forEach(p => {
+                            const key = `${p[0]},${p[1]}`;
+                            if (!existingSet.has(key)) {
+                                combinedPoints.push(p);
+                                existingSet.add(key);
+                            }
+                        });
+                        file.selection = combinedPoints;
+                    } else {
+                        file.selection = newRectPoints;
+                    }
+                } else if (e.altKey) {
+                    // ВЫЧЕСТЬ из выделения (Difference)
+                    if (file.selection && file.selection.length > 0) {
+                        const remainingPoints = file.selection.filter(p => 
+                            !newRectPoints.some(rp => rp[0] === p[0] && rp[1] === p[1])
+                        );
+                        
+                        if (remainingPoints.length > 0) {
+                            file.selection = remainingPoints;
+                        } else {
+                            file.selection = [];
+                        }
+                    }
+                } else if (e.button === 2) {
+                    // ПРАВАЯ КНОПКА - Вычесть область
+                    if (file.selection && file.selection.length > 0) {
+                        const remainingPoints = file.selection.filter(p => 
+                            !newRectPoints.some(rp => rp[0] === p[0] && rp[1] === p[1])
+                        );
+                        
+                        if (remainingPoints.length > 0) {
+                            file.selection = remainingPoints;
+                        } else {
+                            file.selection = [];
+                        }
+                    }
+                } else {
+                    // НОВОЕ выделение (замена)
+                    file.selection = newRectPoints;
+                }
+                
+                // Сохраняем данные выделения для совместимости
+                selection = { x, y, w, h };
+                selectionData = ctx.getImageData(x, y, w, h);
+                
+                // Отрисовываем готовое выделение
+                redrawFromHistory();
+                drawRectangleSelection(x, y, w, h);
+                
+                // Сохраняем в историю
+                saveState();
             }
             break;
         }
@@ -459,6 +654,11 @@ function handleMouseUp(e) {
     }
 
     isDrawing = false;
+    
+    // Восстанавливаем курсор после завершения операции
+    if (file.canvas) {
+        file.canvas.style.cursor = 'default';
+    }
 }
 
 // Обработка двойного клика (для завершения лассо)

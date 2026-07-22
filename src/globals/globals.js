@@ -24,11 +24,16 @@ let selectionData = null;   // Данные выделения
 let lassoPoints = [];       // Массив точек, собранных инструментом лассо
 let isLassoClosed = false;  // Флаг, указывающий, замкнута ли область лассо
 
+// Переменные для прямоугольного выделения (select)
+let selectStartX = 0;       // Начальная X координата прямоугольного выделения
+let selectStartY = 0;       // Начальная Y координата прямоугольного выделения
+
 // Переменные для профиля
 let currentProfile = null;              // Текущий профиль
 let dragMode = 'none';                  // Режим перетаскивания (none, move, scale, rotate)
 let dragOffsetX = 0, dragOffsetY = 0;   // Смещение для перетаскивания (для drag-and-drop)
-let originalProfile = null;             // Исходный профиль до трансформации (для отмены изменений)  
+let originalProfile = null;             // Исходный профиль до трансформации (для отмены изменений)
+let selectedPoint = null;               // Выбранная точка профиля ('start', 'end' или null)
 
 // DOM-элементы (заполняются в main.js)
 let dom = {};

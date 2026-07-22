@@ -4,8 +4,17 @@
 function setCanvasCursor() {
     const file = getActiveFile();
     if (!file) return;
-    const cursor = currentTool === 'move' ? 'move' : 'crosshair';
-    file.canvas.style.cursor = cursor;
+    
+    // Устанавливаем курсор в зависимости от инструмента
+    if (currentTool === 'move') {
+        file.canvas.style.cursor = 'move';
+    } else if (currentTool === 'profile' && currentProfile) {
+        // Для профиля проверяем, наведен ли курсор на профиль
+        // По умолчанию ставим crosshair, а при наведении будет меняться в handleMouseMove
+        file.canvas.style.cursor = 'crosshair';
+    } else {
+        file.canvas.style.cursor = 'crosshair';
+    }
 }
 
 
@@ -75,14 +84,16 @@ function setTool(tool) {
 
     
     // #region [Выбор прямоугольный] (VS Code)
-    // Сброс лассо при переключении с него
-    // if (tool !== 'rectangle') {
-    //     lassoPoints = [];
-    //     isLassoClosed = false;
-    // }
+    // Сброс выделения при переключении с него
+    if (tool !== 'select') {
+        selection = null;
+        selectionData = null;
+        selectStartX = 0;
+        selectStartY = 0;
+    }
 
     // Подсказка для Выбор прямоугольный
-    if (tool === 'rectangle') {
+    if (tool === 'select') {
         const toolInfoElement = document.getElementById('toolInfo');
         if (toolInfoElement) {
             toolInfoElement.textContent = 'Инструмент: Выбор прямоугольный: Левая кнопка: Заменить. Ctrl+Left:Добавить. Правая: Вычесть. Ctrl+Right: Инвертировать. Shift: Квадрат.';
@@ -113,7 +124,7 @@ function updateToolInfo() {
         profile: 'Профиль',
         lasso: 'Лассо',
         move: 'Перемещение выделения',
-        rectangle: 'Выбор прямоугольный'
+        select: 'Выбор прямоугольный'
     };
     const toolInfoElement = document.getElementById('toolInfo');
     if (toolInfoElement) {
