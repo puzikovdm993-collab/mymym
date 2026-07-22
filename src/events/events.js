@@ -493,14 +493,61 @@ function handleMouseUp(e) {
             const h = Math.abs(endY - selectStartY);
             
             if (w > 0 && h > 0) {
-                // Сохраняем выделение
+                // Получаем все точки внутри нового прямоугольника
+                const newRectPoints = calculatePointsInsideRectangle(x, y, w, h);
+                
+                // Обработка модификаторов клавиш
+                if (e.ctrlKey) {
+                    // ДОБАВИТЬ к выделению (Union)
+                    if (file.selection && file.selection.length > 0) {
+                        const existingSet = new Set(file.selection.map(p => `${p[0]},${p[1]}`));
+                        const combinedPoints = [...file.selection];
+                        
+                        newRectPoints.forEach(p => {
+                            const key = `${p[0]},${p[1]}`;
+                            if (!existingSet.has(key)) {
+                                combinedPoints.push(p);
+                                existingSet.add(key);
+                            }
+                        });
+                        file.selection = combinedPoints;
+                    } else {
+                        file.selection = newRectPoints;
+                    }
+                } else if (e.altKey) {
+                    // ВЫЧЕСТЬ из выделения (Difference)
+                    if (file.selection && file.selection.length > 0) {
+                        const remainingPoints = file.selection.filter(p => 
+                            !newRectPoints.some(rp => rp[0] === p[0] && rp[1] === p[1])
+                        );
+                        
+                        if (remainingPoints.length > 0) {
+                            file.selection = remainingPoints;
+                        } else {
+                            file.selection = [];
+                        }
+                    }
+                } else if (e.button === 2) {
+                    // ПРАВАЯ КНОПКА - Вычесть область
+                    if (file.selection && file.selection.length > 0) {
+                        const remainingPoints = file.selection.filter(p => 
+                            !newRectPoints.some(rp => rp[0] === p[0] && rp[1] === p[1])
+                        );
+                        
+                        if (remainingPoints.length > 0) {
+                            file.selection = remainingPoints;
+                        } else {
+                            file.selection = [];
+                        }
+                    }
+                } else {
+                    // НОВОЕ выделение (замена)
+                    file.selection = newRectPoints;
+                }
+                
+                // Сохраняем данные выделения для совместимости
                 selection = { x, y, w, h };
-                
-                // Получаем данные выделения
                 selectionData = ctx.getImageData(x, y, w, h);
-                
-                // Вычисляем и сохраняем все точки внутри прямоугольника
-                file.selection = calculatePointsInsideRectangle(x, y, w, h);
                 
                 // Отрисовываем готовое выделение
                 redrawFromHistory();
