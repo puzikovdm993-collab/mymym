@@ -23,6 +23,7 @@ let selection = null;       // Объект текущего выделения
 let selectionData = null;   // Данные выделения 
 let lassoPoints = [];       // Массив точек, собранных инструментом лассо
 let isLassoClosed = false;  // Флаг, указывающий, замкнута ли область лассо
+let previousSelections = []; // Массив предыдущих выделений для объединения через Ctrl
 
 // Переменные для профиля
 let currentProfile = null;              // Текущий профиль

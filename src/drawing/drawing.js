@@ -188,6 +188,35 @@ function drawLassoSelectionRED(points) {
     ctx.setLineDash([]);
 } 
 
+// Отрисовка предыдущего выделения лассо (для режима Ctrl)
+function drawPreviousLassoSelection(points) {
+    const file = getActiveFile();
+    if (!file || points.length < 2) return;
+    const ctx = file.ctx;
+
+    // Проверяем формат точек - если это массив [x, y], конвертируем в {x, y}
+    let polyPoints = points;
+    if (points.length > 0 && Array.isArray(points[0])) {
+        // Конвертируем [[x,y], [x,y], ...] в [{x,y}, {x,y}, ...]
+        polyPoints = points.map(p => ({x: p[0], y: p[1]}));
+    }
+
+    ctx.strokeStyle = 'rgba(0, 120, 215, 0.3)';
+    ctx.fillStyle = 'rgba(0, 120, 215, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+
+    ctx.beginPath();
+    ctx.moveTo(polyPoints[0].x, polyPoints[0].y);
+    for (let i = 1; i < polyPoints.length; i++) {
+        ctx.lineTo(polyPoints[i].x, polyPoints[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
 
             // Расчёт всех точек внутри полигона
             function calculatePointsInsidePolygon(Lpoints) {
