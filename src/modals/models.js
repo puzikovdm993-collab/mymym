@@ -250,6 +250,36 @@
         observer.observe(graphContainer);
     }
 
+    // ---- Обработка событий мыши для graphModal во время рисования профиля ----
+    // Чтобы рисование не прерывалось при попадании курсора на модальное окно
+    const graphModal = document.getElementById('graphModal');
+    if (graphModal) {
+        graphModal.addEventListener('mousemove', (e) => {
+            // Если рисуем профиль, перенаправляем событие на глобальный обработчик
+            if (currentTool === 'profile' && isDrawing) {
+                handleGlobalMouseMove(e);
+            }
+        });
+
+        graphModal.addEventListener('mouseup', (e) => {
+            // Если рисуем профиль, перенаправляем событие на глобальный обработчик
+            if (currentTool === 'profile' && isDrawing) {
+                handleGlobalMouseUp(e);
+            }
+        });
+
+        // Предотвращаем перетаскивание модального окна во время рисования профиля
+        const modalTitle = graphModal.querySelector('.modal-title');
+        if (modalTitle) {
+            modalTitle.addEventListener('mousedown', (e) => {
+                // Если рисуем профиль, предотвращаем начало перетаскивания
+                if (currentTool === 'profile' && isDrawing) {
+                    e.stopPropagation();
+                }
+            });
+        }
+    }
+
     window.addEventListener('load', () => {
         if (graphContainer) resizePlotlyGraph();
     });
