@@ -186,6 +186,10 @@ function handleGlobalMouseUp(e) {
         // Завершаем перетаскивание – ничего не сохраняем, просто выходим
         dragMode = 'none';
         originalProfile = null;
+        // Восстанавливаем курсор
+        if (file.canvas) {
+            file.canvas.style.cursor = 'crosshair';
+        }
     } else {
         // Завершаем создание нового профиля
         if (lassoPoints.length > 0 || true) {
@@ -208,6 +212,11 @@ function handleGlobalMouseUp(e) {
     if (overlayCanvas) {
         const overlayCtx = overlayCanvas.getContext('2d');
         overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+    
+    // Восстанавливаем курсор
+    if (file.canvas) {
+        file.canvas.style.cursor = 'crosshair';
     }
     
     // Удаляем глобальные обработчики
@@ -253,11 +262,13 @@ function handleMouseDown(e) {
                     // Начинаем перетаскивать начало
                     dragMode = 'start';
                     isDrawing = true;
+                    file.canvas.style.cursor = 'move';
                     break;
                 } else if (distEnd < threshold) {
                     // Перетаскиваем конец
                     dragMode = 'end';
                     isDrawing = true;
+                    file.canvas.style.cursor = 'move';
                     break;
                 } else if (distLine < threshold) {
                     // Перемещаем весь профиль
@@ -266,6 +277,7 @@ function handleMouseDown(e) {
                     dragOffsetY = coords.y - currentProfile.y1;
                     originalProfile = { ...currentProfile };
                     isDrawing = true;
+                    file.canvas.style.cursor = 'move';
                     break;
                 }
             }
@@ -276,6 +288,9 @@ function handleMouseDown(e) {
             // lassoPoints = [{x: startX, y: startY}];
             isLassoClosed = false;
             isDrawing = true;
+            
+            // Сбрасываем курсор при создании нового профиля
+            file.canvas.style.cursor = 'crosshair';
             
             // Добавляем глобальные обработчики для profile tool
             window.addEventListener('mousemove', handleGlobalMouseMove);
@@ -336,16 +351,20 @@ function handleMouseMove(e) {
         const distEnd = Math.hypot(coords.x - currentProfile.x2, coords.y - currentProfile.y2);
         const distLine = distanceToSegment(coords.x, coords.y, currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
         
+        let hoverOnProfile = false;
         if (distStart < threshold || distEnd < threshold || distLine < threshold) {
             file.canvas.style.cursor = 'move';
+            hoverOnProfile = true;
         } else {
             file.canvas.style.cursor = 'crosshair';
         }
         
-        // Отрисовка подсветки точек при наведении
+        // Отрисовка подсветки точек только при наведении
         redrawFromHistory();
         drawProfile(currentProfile);
-        drawProfileHover(coords.x, coords.y);
+        if (hoverOnProfile) {
+            drawProfileHover(coords.x, coords.y);
+        }
         return;
     }
 

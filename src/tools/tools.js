@@ -4,8 +4,17 @@
 function setCanvasCursor() {
     const file = getActiveFile();
     if (!file) return;
-    const cursor = currentTool === 'move' ? 'move' : 'crosshair';
-    file.canvas.style.cursor = cursor;
+    
+    // Устанавливаем курсор в зависимости от инструмента
+    if (currentTool === 'move') {
+        file.canvas.style.cursor = 'move';
+    } else if (currentTool === 'profile' && currentProfile) {
+        // Для профиля проверяем, наведен ли курсор на профиль
+        // По умолчанию ставим crosshair, а при наведении будет меняться в handleMouseMove
+        file.canvas.style.cursor = 'crosshair';
+    } else {
+        file.canvas.style.cursor = 'crosshair';
+    }
 }
 
 
