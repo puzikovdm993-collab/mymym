@@ -130,7 +130,14 @@ const LASSO_FILL_OPACITY = 0.15; // для готового выделения
 function drawLasso(points, currentX, currentY) {
     const file = getActiveFile();
     if (!file || points.length === 0) return;
-    const ctx = file.ctx;
+    
+    // Рисуем на overlayCanvas
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (!overlayCanvas) return;
+    const ctx = overlayCanvas.getContext('2d');
+    
+    // Очищаем overlayCanvas перед перерисовкой
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
     ctx.strokeStyle = LASSO_COLOR;
     ctx.lineWidth = 1;

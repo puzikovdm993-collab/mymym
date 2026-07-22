@@ -89,9 +89,9 @@ function getCanvasCoordsClamped(e) {
     return { x, y };
 }
 
-// Глобальные обработчики для profile tool (чтобы рисование не прерывалось при выходе за canvas)
+// Глобальные обработчики для profile, lasso и select tools (чтобы рисование не прерывалось при выходе за canvas)
 function handleGlobalMouseMove(e) {
-    if (currentTool !== 'profile' || !isDrawing) return;
+    if (!isDrawing) return;
     
     const file = getActiveFile();
     if (!file || !file.canvas) return;
@@ -124,39 +124,78 @@ function handleGlobalMouseMove(e) {
         }
     }
 
-    if (dragMode !== 'none') {
-        // Режим перетаскивания существующего профиля
-        redrawFromHistory();
+    // Обработка для profile tool
+    if (currentTool === 'profile') {
+        if (dragMode !== 'none') {
+            // Режим перетаскивания существующего профиля
+            redrawFromHistory();
 
-        if (dragMode === 'start') {
-            currentProfile.x1 = coords.x;
-            currentProfile.y1 = coords.y;
-        } else if (dragMode === 'end') {
-            currentProfile.x2 = coords.x;
-            currentProfile.y2 = coords.y;
-        } else if (dragMode === 'whole') {
-            const dx = coords.x - dragOffsetX - originalProfile.x1;
-            const dy = coords.y - dragOffsetY - originalProfile.y1;
-            currentProfile.x1 = originalProfile.x1 + dx;
-            currentProfile.y1 = originalProfile.y1 + dy;
-            currentProfile.x2 = originalProfile.x2 + dx;
-            currentProfile.y2 = originalProfile.y2 + dy;
+            if (dragMode === 'start') {
+                currentProfile.x1 = coords.x;
+                currentProfile.y1 = coords.y;
+            } else if (dragMode === 'end') {
+                currentProfile.x2 = coords.x;
+                currentProfile.y2 = coords.y;
+            } else if (dragMode === 'whole') {
+                const dx = coords.x - dragOffsetX - originalProfile.x1;
+                const dy = coords.y - dragOffsetY - originalProfile.y1;
+                currentProfile.x1 = originalProfile.x1 + dx;
+                currentProfile.y1 = originalProfile.y1 + dy;
+                currentProfile.x2 = originalProfile.x2 + dx;
+                currentProfile.y2 = originalProfile.y2 + dy;
+            }
+            drawProfile(currentProfile);
+            updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
+        } else {
+            // Рисование нового профиля
+            redrawFromHistory();
+            drawProfileInProgress(startX, startY, coords.x, coords.y);
+            updateGraph(startX, startY, coords.x, coords.y);
         }
-        drawProfile(currentProfile);
-        updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
-    } else {
-        // Рисование нового профиля
-        redrawFromHistory();
-        drawProfileInProgress(startX, startY, coords.x, coords.y);
-        updateGraph(startX, startY, coords.x, coords.y);
+        
+        lastX = coords.x;
+        lastY = coords.y;
+        return;
     }
-    
-    lastX = coords.x;
-    lastY = coords.y;
+
+    // Обработка для lasso tool
+    if (currentTool === 'lasso') {
+        // Добавление точек в контур лассо
+        if (lassoPoints.length === 0) {
+            lassoPoints.push({x: coords.x, y: coords.y});
+        } else {
+            const lastPoint = lassoPoints[lassoPoints.length - 1];
+            const dist = Math.sqrt((coords.x - lastPoint.x) ** 2 + (coords.y - lastPoint.y) ** 2);
+            if (dist > 5) {
+                lassoPoints.push({x: coords.x, y: coords.y});
+            }
+        }
+        drawLasso(lassoPoints, coords.x, coords.y);
+        
+        lastX = coords.x;
+        lastY = coords.y;
+        return;
+    }
+
+    // Обработка для select tool
+    if (currentTool === 'select') {
+        redrawFromHistory();
+        const overlayCtx = document.getElementById('overlayCanvas').getContext('2d');
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        overlayCtx.strokeStyle = '#0078d7';
+        overlayCtx.lineWidth = 1;
+        overlayCtx.setLineDash([5, 5]);
+        overlayCtx.strokeRect(startX, startY, coords.x - startX, coords.y - startY);
+        overlayCtx.setLineDash([]);
+        
+        lastX = coords.x;
+        lastY = coords.y;
+        return;
+    }
 }
 
 function handleGlobalMouseUp(e) {
-    if (currentTool !== 'profile' || !isDrawing) return;
+    if (!isDrawing) return;
     
     const file = getActiveFile();
     if (!file || !file.canvas) return;
@@ -182,31 +221,141 @@ function handleGlobalMouseUp(e) {
     
     const coords = { x, y };
 
-    if (dragMode !== 'none') {
-        // Завершаем перетаскивание – ничего не сохраняем, просто выходим
-        dragMode = 'none';
-        originalProfile = null;
-    } else {
-        // Завершаем создание нового профиля
-        if (lassoPoints.length > 0 || true) {
-            // Сохраняем координаты
-            currentProfile = {
-                x1: startX,
-                y1: startY,
-                x2: lastX,
-                y2: lastY
-            };
-            // Перерисовываем финальную версию
-            redrawFromHistory();
-            drawProfile(currentProfile);
+    // Обработка для profile tool
+    if (currentTool === 'profile') {
+        if (dragMode !== 'none') {
+            // Завершаем перетаскивание – ничего не сохраняем, просто выходим
+            dragMode = 'none';
+            originalProfile = null;
+        } else {
+            // Завершаем создание нового профиля
+            if (lassoPoints.length > 0 || true) {
+                // Сохраняем координаты
+                currentProfile = {
+                    x1: startX,
+                    y1: startY,
+                    x2: lastX,
+                    y2: lastY
+                };
+                // Перерисовываем финальную версию
+                redrawFromHistory();
+                drawProfile(currentProfile);
+            }
         }
+        
+        isDrawing = false;
+        
+        // Удаляем глобальные обработчики
+        window.removeEventListener('mousemove', handleGlobalMouseMove);
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+        return;
     }
-    
-    isDrawing = false;
-    
-    // Удаляем глобальные обработчики
-    window.removeEventListener('mousemove', handleGlobalMouseMove);
-    window.removeEventListener('mouseup', handleGlobalMouseUp);
+
+    // Обработка для lasso tool
+    if (currentTool === 'lasso') {
+        // Завершение создания лассо
+        if (lassoPoints.length < 2) {
+            lassoPoints = [];
+            file.selection = [];
+            isLassoClosed = false;
+            isDrawing = false;
+            // Очищаем overlayCanvas
+            const overlayCanvas = document.getElementById('overlayCanvas');
+            if (overlayCanvas) {
+                const overlayCtx = overlayCanvas.getContext('2d');
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+            return;
+        }
+        
+        isLassoClosed = true;
+        lassoPoints.push({x: lassoPoints[0].x, y: lassoPoints[0].y});
+        
+        // Вычисление bounding box полигона
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const p of lassoPoints) {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+        
+        const width = Math.ceil(maxX - minX);
+        const height = Math.ceil(maxY - minY);
+        
+        if (width > 0 && height > 0) {
+            // Создание временного canvas для выделения
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            
+            // Создание маски полигона
+            tempCtx.beginPath();
+            tempCtx.moveTo(lassoPoints[0].x - minX, lassoPoints[0].y - minY);
+            for (let i = 1; i < lassoPoints.length; i++) {
+                tempCtx.lineTo(lassoPoints[i].x - minX, lassoPoints[i].y - minY);
+            }
+            tempCtx.closePath();
+            tempCtx.clip();
+            
+            // Копирование изображения в выделенную область
+            tempCtx.drawImage(canvas, minX, minY, width, height, 0, 0, width, height);
+            
+            // Получение ImageData выделенной области
+            selectionData = tempCtx.getImageData(0, 0, width, height);
+            
+            // Сохранение информации о выделении
+            selection = {
+                x: minX,
+                y: minY,
+                w: width,
+                h: height,
+                points: lassoPoints.slice()
+            };
+            
+            // Отрисовка выделения на основном canvas
+            matrixToImage();
+            drawLassoSelection(lassoPoints);
+
+            file.selection = calculatePointsInsidePolygon(lassoPoints);
+
+            saveState();
+        }
+        
+        isDrawing = false;
+        window.removeEventListener('mousemove', handleGlobalMouseMove);
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+        return;
+    }
+
+    // Обработка для select tool
+    if (currentTool === 'select') {
+        // Создание прямоугольного выделения
+        selection = {
+            x: Math.min(startX, coords.x),
+            y: Math.min(startY, coords.y),
+            w: Math.abs(coords.x - startX),
+            h: Math.abs(coords.y - startY)
+        };
+        if (selection.w > 0 && selection.h > 0) {
+            selectionData = ctx.getImageData(selection.x, selection.y, selection.w, selection.h);
+        }
+        
+        // Очищаем overlayCanvas после завершения выделения
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        if (overlayCanvas) {
+            const overlayCtx = overlayCanvas.getContext('2d');
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        }
+        
+        isDrawing = false;
+        window.removeEventListener('mousemove', handleGlobalMouseMove);
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+        return;
+    }
 }
 
 // Обработка нажатия кнопки мыши
@@ -277,12 +426,21 @@ function handleMouseDown(e) {
             break;
         }
         case 'lasso':
-
             matrixToImage();
             // Начало создания контура лассо
             lassoPoints = [{x: startX, y: startY}];
             isLassoClosed = false;
             isDrawing = true;
+            // Добавляем глобальные обработчики для lasso tool
+            window.addEventListener('mousemove', handleGlobalMouseMove);
+            window.addEventListener('mouseup', handleGlobalMouseUp);
+            break;
+        case 'select':
+            // Начало создания прямоугольного выделения
+            isDrawing = true;
+            // Добавляем глобальные обработчики для select tool
+            window.addEventListener('mousemove', handleGlobalMouseMove);
+            window.addEventListener('mouseup', handleGlobalMouseUp);
             break;
     }
 }
@@ -302,12 +460,12 @@ function handleMouseMove(e) {
         document.getElementById('cursorMatrixData').textContent = `d = ${file.matrix[coords.y][coords.x]}`;
     }
 
-    // Если рисуем профиль, глобальные обработчики уже работают, выходим
-    if (currentTool === 'profile' && isDrawing) return;
+    // Если рисуем профиль, лассо или select, глобальные обработчики уже работают, выходим
+    if ((currentTool === 'profile' || currentTool === 'lasso' || currentTool === 'select') && isDrawing) return;
 
     if (!isDrawing) return;
 
-    // Обработка рисования для различных инструментов
+    // Обработка рисования для различных инструментов (оставлено для обратной совместимости)
     switch (currentTool) {
         case 'lasso':
             //redrawFromHistory();
@@ -325,7 +483,6 @@ function handleMouseMove(e) {
             drawLasso(lassoPoints, coords.x, coords.y);
             break;
         case 'select':
-
                 redrawFromHistory();
                 ctx.strokeStyle = '#0078d7';
                 ctx.lineWidth = 1;
@@ -345,8 +502,8 @@ function handleMouseUp(e) {
     if (!file || !file.canvas) return;
     if (e.currentTarget !== file.canvas) return;
 
-    // Для profile tool обработка уже выполнена в handleGlobalMouseUp
-    if (currentTool === 'profile') return;
+    // Для profile, lasso и select tools обработка уже выполнена в handleGlobalMouseUp
+    if (currentTool === 'profile' || currentTool === 'lasso' || currentTool === 'select') return;
 
     if (!isDrawing) return;
 
