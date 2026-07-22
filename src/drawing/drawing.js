@@ -83,14 +83,24 @@ function updateGraph(x1, y1, x2, y2) {
 
     if (!file) return;
 
+    // Получаем размеры изображения как границы отсечения
     const minX = 0, minY = 0, maxX = file.width - 1, maxY = file.height - 1;
     const clipped = clipLine(x1, y1, x2, y2, minX, minY, maxX, maxY);
     if (!clipped) return;
 
-    const pts = bresenham(
-        Math.round(clipped.x0), Math.round(clipped.y0),
-        Math.round(clipped.x1), Math.round(clipped.y1)
-    );
+    // Проверяем, что координаты в пределах матрицы изображения
+    const x0_img = Math.round(clipped.x0);
+    const y0_img = Math.round(clipped.y0);
+    const x1_img = Math.round(clipped.x1);
+    const y1_img = Math.round(clipped.y1);
+    
+    // Ограничиваем координаты размерами изображения
+    const clampedX0 = Math.max(0, Math.min(file.width - 1, x0_img));
+    const clampedY0 = Math.max(0, Math.min(file.height - 1, y0_img));
+    const clampedX1 = Math.max(0, Math.min(file.width - 1, x1_img));
+    const clampedY1 = Math.max(0, Math.min(file.height - 1, y1_img));
+
+    const pts = bresenham(clampedX0, clampedY0, clampedX1, clampedY1);
     if (pts.length < 2) return;
 
     const reds = pts.map(p => file.matrix[p.y][p.x]);
@@ -305,26 +315,58 @@ function drawProfile(profile) {
 function drawProfileInProgress(x1, y1, x2, y2) {
      const file = getActiveFile();
     if (!file) return;
-    const ctx = file.ctx;
+    
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (!overlayCanvas) return;
+    
+    // Синхронизируем размеры overlayCanvas с canvasHost
+    const canvasHost = document.getElementById('canvasHost');
+    if (canvasHost) {
+        overlayCanvas.width = canvasHost.offsetWidth;
+        overlayCanvas.height = canvasHost.offsetHeight;
+    }
+    
+    const ctx = overlayCanvas.getContext('2d');
+    
+    // Очищаем overlay canvas перед рисованием
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
+    // Ограничиваем координаты пределами canvasHost с помощью алгоритма отсечения
+    const minX = 0;
+    const minY = 0;
+    const maxX = overlayCanvas.width - 1;
+    const maxY = overlayCanvas.height - 1;
+    
+    // Используем алгоритм отсечения Cohen-Sutherland
+    const clipped = clipLine(x1, y1, x2, y2, minX, minY, maxX, maxY);
+    
+    if (!clipped) {
+        // Линия полностью за пределами canvas, ничего не рисуем
+        return;
+    }
+    
     // Линия красным цветом
     ctx.strokeStyle = '#ff0000';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
+    ctx.moveTo(clipped.x0, clipped.y0);
+    ctx.lineTo(clipped.x1, clipped.y1);
     ctx.stroke();
 
-    // Маркеры на концах (синие кружки)
+    // Маркеры на концах (синие кружки) - рисуем только если оригинальные точки в пределах canvas
     ctx.fillStyle = '#0078d7';
-    ctx.beginPath();
-    ctx.arc(x1, y1, 5, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(x2, y2, 5, 0, 2 * Math.PI);
-    ctx.fill();
     
-
-
-
+    // Рисуем первый маркер, если он в пределах
+    if (x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY) {
+        ctx.beginPath();
+        ctx.arc(x1, y1, 5, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    // Рисуем второй маркер, если он в пределах
+    if (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY) {
+        ctx.beginPath();
+        ctx.arc(x2, y2, 5, 0, 2 * Math.PI);
+        ctx.fill();
+    }
 }
