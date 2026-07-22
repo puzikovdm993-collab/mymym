@@ -83,11 +83,8 @@ function updateGraph(x1, y1, x2, y2) {
 
     if (!file) return;
 
-    // Получаем размеры overlayCanvas как границы отсечения (canvasHost)
-    const overlayCanvas = document.getElementById('overlayCanvas');
-    if (!overlayCanvas) return;
-    
-    const minX = 0, minY = 0, maxX = overlayCanvas.width - 1, maxY = overlayCanvas.height - 1;
+    // Получаем размеры изображения как границы отсечения
+    const minX = 0, minY = 0, maxX = file.width - 1, maxY = file.height - 1;
     const clipped = clipLine(x1, y1, x2, y2, minX, minY, maxX, maxY);
     if (!clipped) return;
 
@@ -334,40 +331,42 @@ function drawProfileInProgress(x1, y1, x2, y2) {
     // Очищаем overlay canvas перед рисованием
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-    // Ограничиваем координаты пределами canvasHost
+    // Ограничиваем координаты пределами canvasHost с помощью алгоритма отсечения
     const minX = 0;
     const minY = 0;
     const maxX = overlayCanvas.width - 1;
     const maxY = overlayCanvas.height - 1;
     
-    // Обрезаем координаты для отрисовки
-    const clippedX1 = Math.max(minX, Math.min(maxX, x1));
-    const clippedY1 = Math.max(minY, Math.min(maxY, y1));
-    const clippedX2 = Math.max(minX, Math.min(maxX, x2));
-    const clippedY2 = Math.max(minY, Math.min(maxY, y2));
-
+    // Используем алгоритм отсечения Cohen-Sutherland
+    const clipped = clipLine(x1, y1, x2, y2, minX, minY, maxX, maxY);
+    
+    if (!clipped) {
+        // Линия полностью за пределами canvas, ничего не рисуем
+        return;
+    }
+    
     // Линия красным цветом
     ctx.strokeStyle = '#ff0000';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(clippedX1, clippedY1);
-    ctx.lineTo(clippedX2, clippedY2);
+    ctx.moveTo(clipped.x0, clipped.y0);
+    ctx.lineTo(clipped.x1, clipped.y1);
     ctx.stroke();
 
-    // Маркеры на концах (синие кружки) - рисуем только если они в пределах canvas
+    // Маркеры на концах (синие кружки) - рисуем только если оригинальные точки в пределах canvas
     ctx.fillStyle = '#0078d7';
     
     // Рисуем первый маркер, если он в пределах
     if (x1 >= minX && x1 <= maxX && y1 >= minY && y1 <= maxY) {
         ctx.beginPath();
-        ctx.arc(clippedX1, clippedY1, 5, 0, 2 * Math.PI);
+        ctx.arc(x1, y1, 5, 0, 2 * Math.PI);
         ctx.fill();
     }
     
     // Рисуем второй маркер, если он в пределах
     if (x2 >= minX && x2 <= maxX && y2 >= minY && y2 <= maxY) {
         ctx.beginPath();
-        ctx.arc(clippedX2, clippedY2, 5, 0, 2 * Math.PI);
+        ctx.arc(x2, y2, 5, 0, 2 * Math.PI);
         ctx.fill();
     }
 }

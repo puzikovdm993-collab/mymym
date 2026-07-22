@@ -55,10 +55,38 @@ function getCanvasCoords(e) {
     // console.log("rect.x = "+ e.clientX);
     // console.log("rect.y = "+ e.clientY);
 
-    return {
-        x: Math.floor((e.clientX - rect.left) / zoom),
-        y: Math.floor((e.clientY - rect.top) / zoom)
-    };
+    let x = Math.floor((e.clientX - rect.left) / zoom);
+    let y = Math.floor((e.clientY - rect.top) / zoom);
+    
+    // Ограничиваем координаты пределами изображения
+    x = Math.max(0, Math.min(file.width - 1, x));
+    y = Math.max(0, Math.min(file.height - 1, y));
+    
+    return { x, y };
+}
+
+// Получение координат с ограничением по overlayCanvas (для profile tool)
+function getCanvasCoordsClamped(e) {
+    const file = getActiveFile();
+    if (!file || !file.canvas) return { x: 0, y: 0 };
+
+    const rect = file.canvas.getBoundingClientRect();
+    let x = Math.floor((e.clientX - rect.left) / zoom);
+    let y = Math.floor((e.clientY - rect.top) / zoom);
+    
+    // Получаем размеры overlayCanvas для ограничения
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (overlayCanvas) {
+        // Ограничиваем координаты пределами overlayCanvas
+        x = Math.max(0, Math.min(overlayCanvas.width - 1, x));
+        y = Math.max(0, Math.min(overlayCanvas.height - 1, y));
+    }
+    
+    // Дополнительно ограничиваем пределами изображения
+    x = Math.max(0, Math.min(file.width - 1, x));
+    y = Math.max(0, Math.min(file.height - 1, y));
+    
+    return { x, y };
 }
 
 // Обработка нажатия кнопки мыши
@@ -86,7 +114,7 @@ function handleMouseDown(e) {
             const file = getActiveFile();
             if (!file) break;
 
-            const coords = getCanvasCoords(e);
+            const coords = getCanvasCoordsClamped(e);
             const threshold = Math.max(10 / zoom, 5); // порог захвата
 
             // Проверяем, есть ли уже профиль и не перетаскиваем ли мы его
@@ -146,14 +174,6 @@ function handleMouseMove(e) {
 
     const coords = getCanvasCoords(e);
     if (dom.cursorPos) {
-
-        //console.log(coords.y+" "+coords.x);
-        if (coords.y<0){
-            coords.y = 0;
-        }
-        if (coords.x<0){
-            coords.x = 0;
-        }
         dom.cursorPos.textContent = `X: ${coords.x}, Y: ${coords.y}`;
         document.getElementById('cursorMatrixData').textContent = `d = ${file.matrix[coords.y][coords.x]}`;
     }
@@ -169,7 +189,7 @@ function handleMouseMove(e) {
             // ctx = file.ctx;
             // canvas = file.canvas;
 
-            const coords = getCanvasCoords(e);
+            const coords = getCanvasCoordsClamped(e);
 
             if (!isDrawing) break;
 
@@ -242,7 +262,7 @@ function handleMouseUp(e) {
     ctx = file.ctx;
     canvas = file.canvas;
 
-    const coords = getCanvasCoords(e);
+    const coords = getCanvasCoordsClamped(e);
 
 
     // Завершение рисования для различных инструментов
