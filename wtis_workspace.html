@@ -526,56 +526,7 @@
 
             <!-- Контент вкладки "Матрица" -->
             <div class="tab-pane" id="tab-matrix" style="display: none;">
-                <div class="tab-section">
-                    <div class="tab-buttons">
-                        <button class="tab-action-btn" onclick="plotlyZoom()" title="Зум">
-                            <svg  width="24" height="24"><use href="#icon-zoom-in"></use></svg>
-                        </button>
-                        <button class="tab-action-btn" onclick="plotlyPan()" title="Перемещение">
-                            <svg  width="24" height="24"><use href="#icon-move"></use></svg>
-                        </button>
-                        <button class="tab-action-btn" onclick="plotlyRotate()" title="Вращение">
-                            <svg  width="24" height="24"><use href="#icon-rotate-3d"></use></svg>
-                        </button>
-                        <button class="tab-action-btn" onclick="plotlyReset()" title="Сбросить вид">
-                            <svg  width="24" height="24"><use href="#icon-refresh-cw"></use></svg>
-                        </button>
-                        <button class="tab-action-btn" onclick="showMatrix3DSurface()" title="Показать 3D поверхность">
-                            <svg  width="24" height="24"><use href="#icon-shapes"></use></svg>
-                        </button>
-                        <button class="tab-action-btn" onclick="refreshMatrixPlot()" title="Обновить">
-                            <svg  width="24" height="24"><use href="#icon-rotate-right"></use></svg>
-                        </button>
-                    </div>
-                    <h4>3D визуализация матрицы</h4>
-                </div>
-                <div class="tab-section">
-                    <div style="padding: 10px;">
-                        <label for="matrixColormap">Палитра:</label>
-                        <select id="matrixColormap" onchange="refreshMatrixPlot()">
-                            <option value="Viridis">Viridis</option>
-                            <option value="Plasma">Plasma</option>
-                            <option value="Inferno">Inferno</option>
-                            <option value="Magma">Magma</option>
-                            <option value="Cividis">Cividis</option>
-                            <option value="Rainbow">Rainbow</option>
-                            <option value="Portland">Portland</option>
-                            <option value="Jet">Jet</option>
-                            <option value="Hot">Hot</option>
-                            <option value="Coolwarm">Coolwarm</option>
-                            <option value="Greys">Greys</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="tab-section">
-                    <div style="padding: 10px;">
-                        <label>
-                            <input type="checkbox" id="matrixShowContours" onchange="refreshMatrixPlot()"> Показывать контуры
-                        </label>
-                    </div>
-                </div>
-                <!-- Контейнер для Plotly графика -->
-                <div id="matrixPlotContainer" style="width: 100%; height: 920px; border: 1px solid var(--border-color); border-radius: 4px; margin-top: 10px;"></div>
+                <!-- Содержимое перенесено в модальное окно matrixModal -->
             </div>
 
             <!-- Контент вкладки "Настройки" -->
@@ -654,6 +605,9 @@
             </button>
             <button class="tool-btn" data-tool="profile" onclick="setTool('profile')" title="Профиль">
                 <svg class="tool-icon"> <use href="#CurvesEffectIcon"></use></svg>
+            </button>
+            <button class="tool-btn" data-tool="matrix" onclick="setTool('matrix')" title="Матрица">
+                <svg class="tool-icon"> <use href="#icon-shapes"></use></svg>
             </button>
             <button class="tool-btn" data-tool="select" onclick="setTool('select')" title="Выбор прямоугольный">
 
@@ -1385,6 +1339,70 @@
 
 
 <!-- Модальное окно помощи -->
+<div class="modal" id="helpModal">
+
+<!-- Модальное окно Матрица -->
+<div class="modal" id="matrixModal" style="width: 95vw; max-width: 1400px; height: 90vh;">
+    <div class="modal-content" style="width: 100%; height: 100%; min-height: auto; min-width: auto;">
+        <div class="modal-title">
+            <span>3D визуализация матрицы</span>
+            <button onclick="closeMatrixModal()">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 0; overflow: hidden;">
+            <div class="tab-section" style="padding: 10px; margin: 0;">
+                <div class="tab-buttons">
+                    <button class="tab-action-btn" onclick="plotlyZoom()" title="Зум">
+                        <svg  width="24" height="24"><use href="#icon-zoom-in"></use></svg>
+                    </button>
+                    <button class="tab-action-btn" onclick="plotlyPan()" title="Перемещение">
+                        <svg  width="24" height="24"><use href="#icon-move"></use></svg>
+                    </button>
+                    <button class="tab-action-btn" onclick="plotlyRotate()" title="Вращение">
+                        <svg  width="24" height="24"><use href="#icon-rotate-3d"></use></svg>
+                    </button>
+                    <button class="tab-action-btn" onclick="plotlyReset()" title="Сбросить вид">
+                        <svg  width="24" height="24"><use href="#icon-refresh-cw"></use></svg>
+                    </button>
+                    <button class="tab-action-btn" onclick="showMatrix3DSurface()" title="Показать 3D поверхность">
+                        <svg  width="24" height="24"><use href="#icon-shapes"></use></svg>
+                    </button>
+                    <button class="tab-action-btn" onclick="refreshMatrixPlot()" title="Обновить">
+                        <svg  width="24" height="24"><use href="#icon-rotate-right"></use></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="tab-section" style="padding: 10px; margin: 0;">
+                <div style="padding: 0 10px;">
+                    <label for="matrixColormap">Палитра:</label>
+                    <select id="matrixColormap" onchange="refreshMatrixPlot()">
+                        <option value="Viridis">Viridis</option>
+                        <option value="Plasma">Plasma</option>
+                        <option value="Inferno">Inferno</option>
+                        <option value="Magma">Magma</option>
+                        <option value="Cividis">Cividis</option>
+                        <option value="Rainbow">Rainbow</option>
+                        <option value="Portland">Portland</option>
+                        <option value="Jet">Jet</option>
+                        <option value="Hot">Hot</option>
+                        <option value="Coolwarm">Coolwarm</option>
+                        <option value="Greys">Greys</option>
+                    </select>
+                </div>
+            </div>
+            <div class="tab-section" style="padding: 10px; margin: 0;">
+                <div style="padding: 0 10px;">
+                    <label>
+                        <input type="checkbox" id="matrixShowContours" onchange="refreshMatrixPlot()"> Показывать контуры
+                    </label>
+                </div>
+            </div>
+            <!-- Контейнер для Plotly графика -->
+            <div id="matrixPlotContainer" style="width: 100%; height: calc(100% - 120px); border: 1px solid var(--border-color); border-radius: 4px; margin: 10px;"></div>
+        </div>
+        <div class="modal-resize-handle"></div>
+    </div>
+</div>
+
 <div class="modal" id="helpModal">
     <div class="modal-content" style="width: 800px; max-width: 90vw; max-height: 85vh; overflow-y: auto;">
         <div class="modal-title">
