@@ -293,6 +293,8 @@ function handleMouseDown(e) {
             
             // Сохраняем начальную точку и модификаторы
             isDrawing = true;
+            selectStartX = startX;
+            selectStartY = startY;
             break;
         }
     }
@@ -348,15 +350,15 @@ function handleMouseMove(e) {
             
             // Shift - квадрат 1:1
             if (e.shiftKey) {
-                const size = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
-                endX = startX + Math.sign(endX - startX) * size;
-                endY = startY + Math.sign(endY - startY) * size;
+                const size = Math.max(Math.abs(endX - selectStartX), Math.abs(endY - selectStartY));
+                endX = selectStartX + Math.sign(endX - selectStartX) * size;
+                endY = selectStartY + Math.sign(endY - selectStartY) * size;
             }
             
             ctx.strokeStyle = '#0078d7';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
-            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+            ctx.strokeRect(selectStartX, selectStartY, endX - selectStartX, endY - selectStartY);
             ctx.setLineDash([]);
             break;
         }
@@ -477,11 +479,18 @@ function handleMouseUp(e) {
             let endX = coords.x;
             let endY = coords.y;
             
+            // Shift - квадрат 1:1 (при отпускании тоже учитываем)
+            if (e.shiftKey) {
+                const size = Math.max(Math.abs(endX - selectStartX), Math.abs(endY - selectStartY));
+                endX = selectStartX + Math.sign(endX - selectStartX) * size;
+                endY = selectStartY + Math.sign(endY - selectStartY) * size;
+            }
+            
             // Вычисляем параметры прямоугольника
-            const x = Math.min(startX, endX);
-            const y = Math.min(startY, endY);
-            const w = Math.abs(endX - startX);
-            const h = Math.abs(endY - startY);
+            const x = Math.min(selectStartX, endX);
+            const y = Math.min(selectStartY, endY);
+            const w = Math.abs(endX - selectStartX);
+            const h = Math.abs(endY - selectStartY);
             
             if (w > 0 && h > 0) {
                 // Сохраняем выделение

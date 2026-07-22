@@ -79,6 +79,8 @@ function setTool(tool) {
     if (tool !== 'select') {
         selection = null;
         selectionData = null;
+        selectStartX = 0;
+        selectStartY = 0;
     }
 
     // Подсказка для Выбор прямоугольный
