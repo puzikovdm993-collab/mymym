@@ -309,11 +309,11 @@ function drawProfileInProgress(x1, y1, x2, y2) {
     const overlayCanvas = document.getElementById('overlayCanvas');
     if (!overlayCanvas) return;
     
-    // Синхронизируем размеры overlayCanvas с canvasHost
-    const canvasHost = document.getElementById('canvasHost');
-    if (canvasHost) {
-        overlayCanvas.width = canvasHost.offsetWidth;
-        overlayCanvas.height = canvasHost.offsetHeight;
+    // Синхронизируем размеры overlayCanvas с canvasWrapper
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    if (canvasWrapper) {
+        overlayCanvas.width = canvasWrapper.offsetWidth;
+        overlayCanvas.height = canvasWrapper.offsetHeight;
     }
     
     const ctx = overlayCanvas.getContext('2d');

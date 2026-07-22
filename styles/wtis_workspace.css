@@ -808,14 +808,6 @@ body  {
     /* padding: 20px; */
 }
 
-#canvasHost  {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: block;
-}
-
 #overlayCanvas {
     position: absolute;
     top: 0;
@@ -824,6 +816,12 @@ body  {
     height: 100%;
     pointer-events: none;
     z-index: 10;
+}
+
+#canvasHost {
+    position: relative;
+    display: block;
+    z-index: 1;
 }
 
 #imageCanvas  {
