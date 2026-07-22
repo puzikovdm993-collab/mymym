@@ -213,63 +213,105 @@ function drawRectangleSelection(x, y, w, h) {
     ctx.setLineDash([]);
 }
 
-
-            // Расчёт всех точек внутри полигона
-            function calculatePointsInsidePolygon(Lpoints) {
-
-                let points = [];
-                for (let ii = 0; ii < Lpoints.length; ii++) {
-                    points.push([Lpoints[ii].x, Lpoints[ii].y]);
-                }
-
-                
-                // Очищаем массив внутренних точек
-                let allPoints = [...points]; // Сначала добавляем контур
-
-                // Получаем границы ROI
-                let minX = Math.min(...points.map(p => p[0]));
-                let maxX = Math.max(...points.map(p => p[0]));
-                let minY = Math.min(...points.map(p => p[1]));
-                let maxY = Math.max(...points.map(p => p[1]));
-
-
-                
-                // Проверяем каждый пиксель в ограничительном прямоугольнике
-                for (let y = Math.floor(minY) - 1; y <= Math.ceil(maxY) + 1; y++) {
-                    for (let x = Math.floor(minX) - 1; x <= Math.ceil(maxX) + 1; x++) {
-                        // Преобразуем координаты canvas в координаты изображения
-
-                        // Проверяем, что координаты в пределах изображения
-                        //if (imgX >= 0 && imgY >= 0 && imgX < width && imgY < height) {
-                            
-                            // Проверяем, находится ли точка внутри полигона
-                            if (isPointInPolygon(points,x, y)) {
-                                
-                                allPoints.push([x, y]); // Сохраняем координаты относительно изображения
-                            }
-                        //}
-                    }
-                }
-                
-               
-                // Уникализация точек (удаление дубликатов)
-                allPoints = [...new Set(allPoints.map(JSON.stringify))].map(JSON.parse);
-                return allPoints;
+// Отрисовка выделения из file.selection (массив точек)
+function drawSelectionOverlay(file) {
+    if (!file || !file.selection || file.selection.length === 0) return;
+    
+    const ctx = file.ctx;
+    const points = file.selection;
+    
+    // Сохраняем текущее состояние контекста
+    ctx.save();
+    
+    ctx.strokeStyle = '#0078d7';
+    ctx.fillStyle = 'rgba(0, 120, 215, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    
+    // Группируем точки по строкам для эффективной отрисовки
+    const rows = {};
+    for (let i = 0; i < points.length; i++) {
+        const [x, y] = points[i];
+        if (!rows[y]) rows[y] = [];
+        rows[y].push(x);
+    }
+    
+    // Для каждой строки рисуем прямоугольники
+    ctx.beginPath();
+    for (const y in rows) {
+        const xs = rows[y].sort((a, b) => a - b);
+        // Находим непрерывные диапазоны
+        let startX = xs[0];
+        let endX = xs[0];
+        
+        for (let i = 1; i < xs.length; i++) {
+            if (xs[i] > endX + 1) {
+                // Прерывание - рисуем предыдущий диапазон
+                ctx.rect(startX, parseInt(y), endX - startX + 1, 1);
+                startX = xs[i];
+                endX = xs[i];
+            } else {
+                endX = xs[i];
             }
-                        // Алгоритм точки внутри многоугольника (чётность-нечётность)
-                        function isPointInPolygon(points,px, py) {
-                            let inside = false;
-                            for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-                                const [xi, yi] = points[i];
-                                const [xj, yj] = points[j];
-                                const intersect = (
-                                    yi > py !== yj > py &&
-                                    px < (xj - xi) * (py - yi) / (yj - yi) + xi
-                                );
-                                if (intersect) inside = !inside;
-                            }
-                            return inside;
-                        }
+        }
+        // Рисуем последний диапазон
+        ctx.rect(startX, parseInt(y), endX - startX + 1, 1);
+    }
+    
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Восстанавливаем состояние контекста
+    ctx.restore();
+}
+
+
+// Расчёт всех точек внутри полигона
+function calculatePointsInsidePolygon(Lpoints) {
+    let points = [];
+    for (let ii = 0; ii < Lpoints.length; ii++) {
+        points.push([Lpoints[ii].x, Lpoints[ii].y]);
+    }
+    
+    // Очищаем массив внутренних точек
+    let allPoints = [...points]; // Сначала добавляем контур
+
+    // Получаем границы ROI
+    let minX = Math.min(...points.map(p => p[0]));
+    let maxX = Math.max(...points.map(p => p[0]));
+    let minY = Math.min(...points.map(p => p[1]));
+    let maxY = Math.max(...points.map(p => p[1]));
+
+    // Проверяем каждый пиксель в ограничительном прямоугольнике
+    for (let y = Math.floor(minY) - 1; y <= Math.ceil(maxY) + 1; y++) {
+        for (let x = Math.floor(minX) - 1; x <= Math.ceil(maxX) + 1; x++) {
+            // Проверяем, находится ли точка внутри полигона
+            if (isPointInPolygon(points, x, y)) {
+                allPoints.push([x, y]); // Сохраняем координаты относительно изображения
+            }
+        }
+    }
+    
+    // Уникализация точек (удаление дубликатов)
+    allPoints = [...new Set(allPoints.map(JSON.stringify))].map(JSON.parse);
+    return allPoints;
+}
+
+// Алгоритм точки внутри многоугольника (чётность-нечётность)
+function isPointInPolygon(points, px, py) {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const [xi, yi] = points[i];
+        const [xj, yj] = points[j];
+        const intersect = (
+            yi > py !== yj > py &&
+            px < (xj - xi) * (py - yi) / (yj - yi) + xi
+        );
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
 
 
 
