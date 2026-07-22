@@ -256,7 +256,9 @@ function handleGlobalMouseUp(e) {
         // Завершение создания лассо
         if (lassoPoints.length < 2) {
             lassoPoints = [];
-            file.selection = [];
+            if (!e.ctrlKey) {
+                file.selection = [];
+            }
             isLassoClosed = false;
             isDrawing = false;
             // Очищаем overlayCanvas
@@ -318,9 +320,21 @@ function handleGlobalMouseUp(e) {
             
             // Отрисовка выделения на основном canvas
             matrixToImage();
-            drawLassoSelection(lassoPoints);
-
-            file.selection = calculatePointsInsidePolygon(lassoPoints);
+            
+            // Если зажат Ctrl, сохраняем предыдущее выделение и суммируем с новым
+            if (e.ctrlKey && file.selection && file.selection.length > 0) {
+                const previousSelection = file.selection.slice();
+                file.selection = calculatePointsInsidePolygon(lassoPoints);
+                // Объединяем точки предыдущего и нового выделения
+                const combinedPoints = [...previousSelection, ...file.selection];
+                // Уникализация точек
+                file.selection = [...new Set(combinedPoints.map(JSON.stringify))].map(JSON.parse);
+                // Перерисовываем оба выделения
+                drawLassoSelection(lassoPoints);
+            } else {
+                drawLassoSelection(lassoPoints);
+                file.selection = calculatePointsInsidePolygon(lassoPoints);
+            }
 
             saveState();
         }
@@ -346,7 +360,33 @@ function handleGlobalMouseUp(e) {
         
         // Отрисовка выделения на canvas (не очищаем overlayCanvas)
         matrixToImage();
-        drawRectangleSelection(selection.x, selection.y, selection.w, selection.h);
+        
+        // Если зажат Ctrl, сохраняем предыдущее выделение и суммируем с новым
+        if (e.ctrlKey && file.selection && file.selection.length > 0) {
+            const previousSelection = file.selection.slice();
+            // Создаём прямоугольное выделение как массив точек
+            const rectPoints = [];
+            for (let y = selection.y; y < selection.y + selection.h; y++) {
+                for (let x = selection.x; x < selection.x + selection.w; x++) {
+                    rectPoints.push([x, y]);
+                }
+            }
+            // Объединяем точки предыдущего и нового выделения
+            const combinedPoints = [...previousSelection, ...rectPoints];
+            // Уникализация точек
+            file.selection = [...new Set(combinedPoints.map(JSON.stringify))].map(JSON.parse);
+            // Перерисовываем оба выделения
+            drawRectangleSelection(selection.x, selection.y, selection.w, selection.h);
+        } else {
+            drawRectangleSelection(selection.x, selection.y, selection.w, selection.h);
+            file.selection = [];
+            // Создаём прямоугольное выделение как массив точек
+            for (let y = selection.y; y < selection.y + selection.h; y++) {
+                for (let x = selection.x; x < selection.x + selection.w; x++) {
+                    file.selection.push([x, y]);
+                }
+            }
+        }
         
         isDrawing = false;
         window.removeEventListener('mousemove', handleGlobalMouseMove);
@@ -423,7 +463,10 @@ function handleMouseDown(e) {
             break;
         }
         case 'lasso':
-            matrixToImage();
+            // Если не зажат Ctrl, очищаем предыдущее выделение
+            if (!e.ctrlKey) {
+                matrixToImage();
+            }
             // Начало создания контура лассо
             lassoPoints = [{x: startX, y: startY}];
             isLassoClosed = false;
@@ -433,6 +476,10 @@ function handleMouseDown(e) {
             window.addEventListener('mouseup', handleGlobalMouseUp);
             break;
         case 'select':
+            // Если не зажат Ctrl, очищаем предыдущее выделение
+            if (!e.ctrlKey) {
+                matrixToImage();
+            }
             // Начало создания прямоугольного выделения
             isDrawing = true;
             // Добавляем глобальные обработчики для select tool
@@ -516,7 +563,9 @@ function handleMouseUp(e) {
             // Завершение создания лассо
             if (lassoPoints.length < 2) {
                 lassoPoints = [];
-                file.selection = [];
+                if (!e.ctrlKey) {
+                    file.selection = [];
+                }
                 isLassoClosed = false;
                 break;
             }
@@ -558,7 +607,6 @@ function handleMouseUp(e) {
 
 
 
-
                 // Получение ImageData выделенной области
                 selectionData = tempCtx.getImageData(0, 0, width, height);
                 
@@ -574,11 +622,21 @@ function handleMouseUp(e) {
                 // Отрисовка выделения на основном canvas
                 //redrawFromHistory();
                 matrixToImage();
-                drawLassoSelection(lassoPoints);
-
-                //lassoPoints  = calculatePointsInsidePolygon(lassoPoints);
-                //console.log(lassoPoints.length);
-                file.selection = calculatePointsInsidePolygon(lassoPoints);
+                
+                // Если зажат Ctrl, сохраняем предыдущее выделение и суммируем с новым
+                if (e.ctrlKey && file.selection && file.selection.length > 0) {
+                    const previousSelection = file.selection.slice();
+                    file.selection = calculatePointsInsidePolygon(lassoPoints);
+                    // Объединяем точки предыдущего и нового выделения
+                    const combinedPoints = [...previousSelection, ...file.selection];
+                    // Уникализация точек
+                    file.selection = [...new Set(combinedPoints.map(JSON.stringify))].map(JSON.parse);
+                    // Перерисовываем оба выделения
+                    drawLassoSelection(lassoPoints);
+                } else {
+                    drawLassoSelection(lassoPoints);
+                    file.selection = calculatePointsInsidePolygon(lassoPoints);
+                }
 
                 saveState();
             }
@@ -605,6 +663,36 @@ function handleMouseUp(e) {
             };
             if (selection.w > 0 && selection.h > 0) {
                 selectionData = ctx.getImageData(selection.x, selection.y, selection.w, selection.h);
+            }
+            
+            // Отрисовка выделения на canvas
+            matrixToImage();
+            
+            // Если зажат Ctrl, сохраняем предыдущее выделение и суммируем с новым
+            if (e.ctrlKey && file.selection && file.selection.length > 0) {
+                const previousSelection = file.selection.slice();
+                // Создаём прямоугольное выделение как массив точек
+                const rectPoints = [];
+                for (let y = selection.y; y < selection.y + selection.h; y++) {
+                    for (let x = selection.x; x < selection.x + selection.w; x++) {
+                        rectPoints.push([x, y]);
+                    }
+                }
+                // Объединяем точки предыдущего и нового выделения
+                const combinedPoints = [...previousSelection, ...rectPoints];
+                // Уникализация точек
+                file.selection = [...new Set(combinedPoints.map(JSON.stringify))].map(JSON.parse);
+                // Перерисовываем оба выделения
+                drawRectangleSelection(selection.x, selection.y, selection.w, selection.h);
+            } else {
+                drawRectangleSelection(selection.x, selection.y, selection.w, selection.h);
+                file.selection = [];
+                // Создаём прямоугольное выделение как массив точек
+                for (let y = selection.y; y < selection.y + selection.h; y++) {
+                    for (let x = selection.x; x < selection.x + selection.w; x++) {
+                        file.selection.push([x, y]);
+                    }
+                }
             }
             break;
         }
