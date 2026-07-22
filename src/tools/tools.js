@@ -63,6 +63,19 @@ function setTool(tool) {
     }
     // #endregion
 
+    // #region [Матрица] (VS Code)
+    // Показываем модальное окно матрицы только для инструмента matrix
+    if (tool == 'matrix') {
+        document.getElementById('matrixModal').classList.add('active');
+        // Обновляем график при открытии
+        if (typeof refreshMatrixPlot === 'function') {
+            refreshMatrixPlot();
+        }
+    }
+    if (tool !== 'matrix') {
+        document.getElementById('matrixModal').classList.remove('active');
+    }
+    // #endregion
 
 
     // #region [Лассо] (VS Code)
@@ -122,6 +135,7 @@ function updateToolInfo() {
     const toolNames = {
         cursor: 'Курсор',
         profile: 'Профиль',
+        matrix: 'Матрица',
         lasso: 'Лассо',
         move: 'Перемещение выделения',
         select: 'Выбор прямоугольный'
