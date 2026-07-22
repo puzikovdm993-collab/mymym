@@ -284,6 +284,17 @@ function handleMouseDown(e) {
             isLassoClosed = false;
             isDrawing = true;
             break;
+        case 'select': {
+            // Начало прямоугольного выделения
+            const file = getActiveFile();
+            if (!file) break;
+            
+            matrixToImage();
+            
+            // Сохраняем начальную точку и модификаторы
+            isDrawing = true;
+            break;
+        }
     }
 }
 
@@ -324,15 +335,31 @@ function handleMouseMove(e) {
             }
             drawLasso(lassoPoints, coords.x, coords.y);
             break;
-        case 'select':
-
-                redrawFromHistory();
-                ctx.strokeStyle = '#0078d7';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([5, 5]);
-                ctx.strokeRect(startX, startY, coords.x - startX, coords.y - startY);
-                ctx.setLineDash([]);
-                break;
+        case 'select': {
+            // Прямоугольное выделение - процесс рисования
+            const file = getActiveFile();
+            if (!file) break;
+            
+            redrawFromHistory();
+            
+            // Определяем координаты с учётом модификаторов
+            let endX = coords.x;
+            let endY = coords.y;
+            
+            // Shift - квадрат 1:1
+            if (e.shiftKey) {
+                const size = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+                endX = startX + Math.sign(endX - startX) * size;
+                endY = startY + Math.sign(endY - startY) * size;
+            }
+            
+            ctx.strokeStyle = '#0078d7';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
+            ctx.setLineDash([]);
+            break;
+        }
     }
 
     lastX = coords.x;
@@ -443,14 +470,35 @@ function handleMouseUp(e) {
 
         case 'select': {
             // Создание прямоугольного выделения
-            selection = {
-                x: Math.min(startX, coords.x),
-                y: Math.min(startY, coords.y),
-                w: Math.abs(coords.x - startX),
-                h: Math.abs(coords.y - startY)
-            };
-            if (selection.w > 0 && selection.h > 0) {
-                selectionData = ctx.getImageData(selection.x, selection.y, selection.w, selection.h);
+            const file = getActiveFile();
+            if (!file) break;
+            
+            // Определяем координаты с учётом модификаторов
+            let endX = coords.x;
+            let endY = coords.y;
+            
+            // Вычисляем параметры прямоугольника
+            const x = Math.min(startX, endX);
+            const y = Math.min(startY, endY);
+            const w = Math.abs(endX - startX);
+            const h = Math.abs(endY - startY);
+            
+            if (w > 0 && h > 0) {
+                // Сохраняем выделение
+                selection = { x, y, w, h };
+                
+                // Получаем данные выделения
+                selectionData = ctx.getImageData(x, y, w, h);
+                
+                // Вычисляем и сохраняем все точки внутри прямоугольника
+                file.selection = calculatePointsInsideRectangle(x, y, w, h);
+                
+                // Отрисовываем готовое выделение
+                redrawFromHistory();
+                drawRectangleSelection(x, y, w, h);
+                
+                // Сохраняем в историю
+                saveState();
             }
             break;
         }

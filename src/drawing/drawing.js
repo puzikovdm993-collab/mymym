@@ -127,6 +127,41 @@ function updateGraph(x1, y1, x2, y2) {
 
 const LASSO_COLOR = '#0078d7';
 const LASSO_FILL_OPACITY = 0.15; // для готового выделения
+
+// Отрисовка прямоугольного выделения с "марширующей" рамкой
+function drawRectangleSelection(x, y, w, h) {
+    const file = getActiveFile();
+    if (!file || w <= 0 || h <= 0) return;
+    const ctx = file.ctx;
+
+    ctx.strokeStyle = '#ef4444';
+    ctx.fillStyle = `rgba(0, 120, 215, ${LASSO_FILL_OPACITY})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+// Вычисление всех точек внутри прямоугольника
+function calculatePointsInsideRectangle(x, y, w, h) {
+    const points = [];
+    const minX = Math.max(0, Math.floor(x));
+    const maxX = Math.min(getActiveFile().width - 1, Math.ceil(x + w));
+    const minY = Math.max(0, Math.floor(y));
+    const maxY = Math.min(getActiveFile().height - 1, Math.ceil(y + h));
+
+    for (let py = minY; py <= maxY; py++) {
+        for (let px = minX; px <= maxX; px++) {
+            points.push([px, py]);
+        }
+    }
+    return points;
+}
+
 function drawLasso(points, currentX, currentY) {
     const file = getActiveFile();
     if (!file || points.length === 0) return;

@@ -75,14 +75,14 @@ function setTool(tool) {
 
     
     // #region [Выбор прямоугольный] (VS Code)
-    // Сброс лассо при переключении с него
-    // if (tool !== 'rectangle') {
-    //     lassoPoints = [];
-    //     isLassoClosed = false;
-    // }
+    // Сброс выделения при переключении с него
+    if (tool !== 'select') {
+        selection = null;
+        selectionData = null;
+    }
 
     // Подсказка для Выбор прямоугольный
-    if (tool === 'rectangle') {
+    if (tool === 'select') {
         const toolInfoElement = document.getElementById('toolInfo');
         if (toolInfoElement) {
             toolInfoElement.textContent = 'Инструмент: Выбор прямоугольный: Левая кнопка: Заменить. Ctrl+Left:Добавить. Правая: Вычесть. Ctrl+Right: Инвертировать. Shift: Квадрат.';
@@ -113,7 +113,7 @@ function updateToolInfo() {
         profile: 'Профиль',
         lasso: 'Лассо',
         move: 'Перемещение выделения',
-        rectangle: 'Выбор прямоугольный'
+        select: 'Выбор прямоугольный'
     };
     const toolInfoElement = document.getElementById('toolInfo');
     if (toolInfoElement) {
