@@ -144,6 +144,20 @@ function handleGlobalMouseMove(e) {
         }
         drawProfile(currentProfile);
         updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
+    } else if (selectedPoint) {
+        // Режим перемещения выбранной точки профиля
+        redrawFromHistory();
+        
+        if (selectedPoint === 'start') {
+            currentProfile.x1 = coords.x;
+            currentProfile.y1 = coords.y;
+        } else if (selectedPoint === 'end') {
+            currentProfile.x2 = coords.x;
+            currentProfile.y2 = coords.y;
+        }
+        
+        drawProfile(currentProfile);
+        updateGraph(currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
     } else {
         // Рисование нового профиля
         redrawFromHistory();
@@ -183,10 +197,18 @@ function handleGlobalMouseUp(e) {
     const coords = { x, y };
 
     if (dragMode !== 'none') {
-        // Завершаем перетаскивание – ничего не сохраняем, просто выходим
+        // Завершаем перетаскивание всего профиля – сохраняем изменения в историю
         dragMode = 'none';
         originalProfile = null;
+        saveState(); // Сохраняем состояние после перемещения
         // Восстанавливаем курсор
+        if (file.canvas) {
+            file.canvas.style.cursor = 'crosshair';
+        }
+    } else if (selectedPoint) {
+        // Завершаем перемещение выбранной точки - сбрасываем выбор (второй клик)
+        selectedPoint = null;
+        saveState(); // Сохраняем состояние после перемещения точки
         if (file.canvas) {
             file.canvas.style.cursor = 'crosshair';
         }
@@ -203,6 +225,7 @@ function handleGlobalMouseUp(e) {
             // Перерисовываем финальную версию
             redrawFromHistory();
             drawProfile(currentProfile);
+            saveState(); // Сохраняем состояние после создания профиля
         }
     }
     
@@ -252,23 +275,35 @@ function handleMouseDown(e) {
             const coords = getCanvasCoordsClamped(e);
             const threshold = Math.max(10 / zoom, 5); // порог захвата
 
+            // Если уже выбрана точка для перемещения, начинаем её перемещение
+            if (selectedPoint) {
+                isDrawing = true;
+                file.canvas.style.cursor = 'move';
+                // Добавляем глобальные обработчики для перемещения точки
+                window.addEventListener('mousemove', handleGlobalMouseMove);
+                window.addEventListener('mouseup', handleGlobalMouseUp);
+                break;
+            }
+
             // Проверяем, есть ли уже профиль и не перетаскиваем ли мы его
-            if (currentProfile) {
+            if (currentProfile && !selectedPoint) {
                 const distStart = Math.hypot(coords.x - currentProfile.x1, coords.y - currentProfile.y1);
                 const distEnd = Math.hypot(coords.x - currentProfile.x2, coords.y - currentProfile.y2);
                 const distLine = distanceToSegment(coords.x, coords.y, currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
 
                 if (distStart < threshold) {
-                    // Начинаем перетаскивать начало
-                    dragMode = 'start';
-                    isDrawing = true;
+                    // Выбираем начальную точку для перемещения (первый клик)
+                    selectedPoint = 'start';
+                    isDrawing = false; // Не рисуем новый профиль
                     file.canvas.style.cursor = 'move';
+                    // Не добавляем обработчики здесь, они добавятся при следующем mousedown
                     break;
                 } else if (distEnd < threshold) {
-                    // Перетаскиваем конец
-                    dragMode = 'end';
-                    isDrawing = true;
+                    // Выбираем конечную точку для перемещения (первый клик)
+                    selectedPoint = 'end';
+                    isDrawing = false; // Не рисуем новый профиль
                     file.canvas.style.cursor = 'move';
+                    // Не добавляем обработчики здесь, они добавятся при следующем mousedown
                     break;
                 } else if (distLine < threshold) {
                     // Перемещаем весь профиль
@@ -344,8 +379,8 @@ function handleMouseMove(e) {
     // Если рисуем профиль, глобальные обработчики уже работают, выходим
     if (currentTool === 'profile' && isDrawing) return;
 
-    // Проверка наведения на профиль для изменения курсора (только если не рисуем)
-    if (currentTool === 'profile' && !isDrawing && currentProfile) {
+    // Проверка наведения на профиль для изменения курсора (только если не рисуем и не перемещаем точку)
+    if (currentTool === 'profile' && !isDrawing && currentProfile && !selectedPoint) {
         const threshold = Math.max(10 / zoom, 5);
         const distStart = Math.hypot(coords.x - currentProfile.x1, coords.y - currentProfile.y1);
         const distEnd = Math.hypot(coords.x - currentProfile.x2, coords.y - currentProfile.y2);
@@ -365,6 +400,12 @@ function handleMouseMove(e) {
         if (hoverOnProfile) {
             drawProfileHover(coords.x, coords.y);
         }
+        return;
+    }
+    
+    // Если выбрана точка для перемещения, обновляем курсор
+    if (currentTool === 'profile' && selectedPoint) {
+        file.canvas.style.cursor = 'move';
         return;
     }
 

@@ -32,7 +32,8 @@ let selectStartY = 0;       // Начальная Y координата пря�
 let currentProfile = null;              // Текущий профиль
 let dragMode = 'none';                  // Режим перетаскивания (none, move, scale, rotate)
 let dragOffsetX = 0, dragOffsetY = 0;   // Смещение для перетаскивания (для drag-and-drop)
-let originalProfile = null;             // Исходный профиль до трансформации (для отмены изменений)  
+let originalProfile = null;             // Исходный профиль до трансформации (для отмены изменений)
+let selectedPoint = null;               // Выбранная точка профиля ('start', 'end' или null)
 
 // DOM-элементы (заполняются в main.js)
 let dom = {};

@@ -334,11 +334,23 @@ function drawProfile(profile) {
     ctx.lineTo(profile.x2, profile.y2);
     ctx.stroke();
 
-    // Рисуем концевые маркеры (синие кружки)
-    ctx.fillStyle = '#0078d7';
+    // Определяем цвет маркеров в зависимости от выбора
+    let startColor = '#0078d7'; // синий по умолчанию
+    let endColor = '#0078d7';   // синий по умолчанию
+    
+    if (selectedPoint === 'start') {
+        startColor = '#ffff00'; // желтый для выбранной начальной точки
+    } else if (selectedPoint === 'end') {
+        endColor = '#ffa500';   // оранжевый для выбранной конечной точки
+    }
+
+    // Рисуем концевые маркеры
+    ctx.fillStyle = startColor;
     ctx.beginPath();
     ctx.arc(profile.x1, profile.y1, 5, 0, 2 * Math.PI);
     ctx.fill();
+    
+    ctx.fillStyle = endColor;
     ctx.beginPath();
     ctx.arc(profile.x2, profile.y2, 5, 0, 2 * Math.PI);
     ctx.fill();
