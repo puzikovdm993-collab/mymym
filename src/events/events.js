@@ -344,12 +344,9 @@ function handleGlobalMouseUp(e) {
             selectionData = ctx.getImageData(selection.x, selection.y, selection.w, selection.h);
         }
         
-        // Очищаем overlayCanvas после завершения выделения
-        const overlayCanvas = document.getElementById('overlayCanvas');
-        if (overlayCanvas) {
-            const overlayCtx = overlayCanvas.getContext('2d');
-            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-        }
+        // Отрисовка выделения на canvas (не очищаем overlayCanvas)
+        matrixToImage();
+        drawRectangleSelection(selection.x, selection.y, selection.w, selection.h);
         
         isDrawing = false;
         window.removeEventListener('mousemove', handleGlobalMouseMove);

@@ -195,6 +195,24 @@ function drawLassoSelectionRED(points) {
     ctx.setLineDash([]);
 } 
 
+// Отрисовка прямоугольного выделения
+function drawRectangleSelection(x, y, w, h) {
+    const file = getActiveFile();
+    if (!file || w <= 0 || h <= 0) return;
+    const ctx = file.ctx;
+
+    ctx.strokeStyle = '#0078d7';
+    ctx.fillStyle = 'rgba(0, 120, 215, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
 
             // Расчёт всех точек внутри полигона
             function calculatePointsInsidePolygon(Lpoints) {
