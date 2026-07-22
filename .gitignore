@@ -1,1 +1,1 @@
-(src/events/events.js is a source file, so no need to add anything to .gitignore)
+(src/drawing/drawing.js, src/events/events.js)

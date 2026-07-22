@@ -204,6 +204,12 @@ function handleGlobalMouseUp(e) {
     
     isDrawing = false;
     
+    // Очищаем overlay canvas от подсветки
+    if (overlayCanvas) {
+        const overlayCtx = overlayCanvas.getContext('2d');
+        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
+    
     // Удаляем глобальные обработчики
     window.removeEventListener('mousemove', handleGlobalMouseMove);
     window.removeEventListener('mouseup', handleGlobalMouseUp);
@@ -298,6 +304,11 @@ function handleMouseDown(e) {
             break;
         }
     }
+    
+    // Сброс курсора при начале рисования/выделения
+    if (isDrawing && file.canvas) {
+        file.canvas.style.cursor = 'crosshair';
+    }
 }
 
 // Обработка движения мыши
@@ -317,6 +328,26 @@ function handleMouseMove(e) {
 
     // Если рисуем профиль, глобальные обработчики уже работают, выходим
     if (currentTool === 'profile' && isDrawing) return;
+
+    // Проверка наведения на профиль для изменения курсора (только если не рисуем)
+    if (currentTool === 'profile' && !isDrawing && currentProfile) {
+        const threshold = Math.max(10 / zoom, 5);
+        const distStart = Math.hypot(coords.x - currentProfile.x1, coords.y - currentProfile.y1);
+        const distEnd = Math.hypot(coords.x - currentProfile.x2, coords.y - currentProfile.y2);
+        const distLine = distanceToSegment(coords.x, coords.y, currentProfile.x1, currentProfile.y1, currentProfile.x2, currentProfile.y2);
+        
+        if (distStart < threshold || distEnd < threshold || distLine < threshold) {
+            file.canvas.style.cursor = 'move';
+        } else {
+            file.canvas.style.cursor = 'crosshair';
+        }
+        
+        // Отрисовка подсветки точек при наведении
+        redrawFromHistory();
+        drawProfile(currentProfile);
+        drawProfileHover(coords.x, coords.y);
+        return;
+    }
 
     if (!isDrawing) return;
 
@@ -563,6 +594,11 @@ function handleMouseUp(e) {
     }
 
     isDrawing = false;
+    
+    // Восстанавливаем курсор после завершения операции
+    if (file.canvas) {
+        file.canvas.style.cursor = 'default';
+    }
 }
 
 // Обработка двойного клика (для завершения лассо)

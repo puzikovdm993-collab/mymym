@@ -405,3 +405,52 @@ function drawProfileInProgress(x1, y1, x2, y2) {
         ctx.fill();
     }
 }
+
+// Отрисовка подсветки начальной и конечной точки профиля при наведении
+function drawProfileHover(mouseX, mouseY) {
+    const file = getActiveFile();
+    if (!file || !currentProfile) return;
+    
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (!overlayCanvas) return;
+    
+    const ctx = overlayCanvas.getContext('2d');
+    
+    const threshold = Math.max(10 / zoom, 5);
+    
+    // Проверяем расстояние до начальной точки
+    const distStart = Math.hypot(mouseX - currentProfile.x1, mouseY - currentProfile.y1);
+    if (distStart < threshold) {
+        // Подсветка начальной точки - желтый круг с обводкой
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(currentProfile.x1, currentProfile.y1, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Текст "Начало"
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('Начало', currentProfile.x1 + 10, currentProfile.y1 - 10);
+    }
+    
+    // Проверяем расстояние до конечной точки
+    const distEnd = Math.hypot(mouseX - currentProfile.x2, mouseY - currentProfile.y2);
+    if (distEnd < threshold) {
+        // Подсветка конечной точки - оранжевый круг с обводкой
+        ctx.fillStyle = 'rgba(255, 165, 0, 0.5)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(currentProfile.x2, currentProfile.y2, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Текст "Конец"
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('Конец', currentProfile.x2 + 10, currentProfile.y2 - 10);
+    }
+}
