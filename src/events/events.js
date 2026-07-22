@@ -287,7 +287,9 @@ function handleMouseDown(e) {
             } else {
                 // Сохраняем текущее выделение в массив предыдущих
                 if (file.selection && file.selection.length > 0) {
-                    previousSelections.push([...file.selection]);
+                    // Конвертируем точки из формата [x, y] в {x, y} для отрисовки
+                    const selectionPoints = file.selection.map(p => ({x: p[0], y: p[1]}));
+                    previousSelections.push(selectionPoints);
                 }
                 lassoPoints = [{x: startX, y: startY}];
             }
@@ -335,6 +337,14 @@ function handleMouseMove(e) {
         case 'lasso':
             //redrawFromHistory();
             matrixToImage();
+            
+            // Отрисовка предыдущих выделений (если были с Ctrl)
+            if (previousSelections.length > 0) {
+                for (const prevSel of previousSelections) {
+                    drawPreviousLassoSelection(prevSel);
+                }
+            }
+            
             // Добавление точек в контур лассо
             if (lassoPoints.length === 0) {
                 lassoPoints.push({x: coords.x, y: coords.y});
@@ -348,6 +358,7 @@ function handleMouseMove(e) {
             drawLasso(lassoPoints, coords.x, coords.y);
             break;
         case 'select':
+                // Рисуем прямоугольник только если зажата кнопка мыши и мы движемся
                 redrawFromHistory();
                 
                 // Отрисовка предыдущих выделений (если были с Ctrl)
