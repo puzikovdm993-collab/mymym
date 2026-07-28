@@ -544,6 +544,229 @@
 
     console.log('✅ Функции окна помощи добавлены');
     
+    // ====================== МОДАЛЬНОЕ ОКНО ГОРЯЧИХ КЛАВИШ ======================
+    
+    // Список горячих клавиш по умолчанию
+    const defaultHotkeys = {
+        'undo': { key: 'z', ctrl: true, shift: false, alt: false, description: 'Отменить действие' },
+        'redo': { key: 'y', ctrl: true, shift: false, alt: false, description: 'Повторить действие' },
+        'save': { key: 's', ctrl: true, shift: false, alt: false, description: 'Сохранить' },
+        'open': { key: 'o', ctrl: true, shift: false, alt: false, description: 'Открыть файл' },
+        'loadFromServer': { key: 'l', ctrl: true, shift: false, alt: false, description: 'Загрузить с сервера' },
+        'newFile': { key: 'n', ctrl: true, shift: false, alt: false, description: 'Новый файл' },
+        'cycleFiles': { key: 'tab', ctrl: true, shift: false, alt: false, description: 'Переключение файлов' },
+        'rotate': { key: 'r', ctrl: false, shift: false, alt: true, description: 'Поворот на 90°' },
+        'recentFiles': { key: 'r', ctrl: true, shift: true, alt: false, description: 'Недавние файлы' }
+    };
+    
+    // Загрузка горячих клавиш из localStorage или использование значений по умолчанию
+    function loadHotkeys() {
+        const saved = localStorage.getItem('userHotkeys');
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (e) {
+                console.error('Ошибка загрузки горячих клавиш:', e);
+            }
+        }
+        return { ...defaultHotkeys };
+    }
+    
+    // Сохранение горячих клавиш в localStorage
+    function saveHotkeysToStorage(hotkeys) {
+        localStorage.setItem('userHotkeys', JSON.stringify(hotkeys));
+    }
+    
+    // Форматирование комбинации клавиш для отображения
+    function formatHotkey(hotkey) {
+        const parts = [];
+        if (hotkey.ctrl) parts.push('Ctrl');
+        if (hotkey.shift) parts.push('Shift');
+        if (hotkey.alt) parts.push('Alt');
+        parts.push(hotkey.key.toUpperCase());
+        return parts.join('+');
+    }
+    
+    // Показать окно настройки горячих клавиш
+    window.showHotkeysModal = function() {
+        const modal = document.getElementById('hotkeysModal');
+        if (!modal) return console.error('hotkeysModal не найден');
+        
+        renderHotkeysList();
+        modal.classList.add('active');
+    };
+    
+    // Закрыть окно горячих клавиш
+    window.closeHotkeysModal = function() {
+        const modal = document.getElementById('hotkeysModal');
+        if (modal) modal.classList.remove('active');
+    };
+    
+    // Отрисовка списка горячих клавиш
+    function renderHotkeysList() {
+        const container = document.getElementById('hotkeysList');
+        if (!container) return;
+        
+        const hotkeys = loadHotkeys();
+        container.innerHTML = '';
+        
+        for (const [action, config] of Object.entries(hotkeys)) {
+            const row = document.createElement('div');
+            row.className = 'hotkey-row';
+            row.style.cssText = `
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--border-color);
+                gap: 16px;
+            `;
+            
+            const desc = document.createElement('span');
+            desc.textContent = config.description;
+            desc.style.cssText = 'flex: 1; font-size: 14px; color: var(--text-secondary);';
+            
+            const inputContainer = document.createElement('div');
+            inputContainer.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+            
+            const modifiersContainer = document.createElement('div');
+            modifiersContainer.style.cssText = 'display: flex; gap: 4px; margin-right: 8px;';
+            
+            const modifiers = [
+                { key: 'ctrl', label: 'Ctrl' },
+                { key: 'shift', label: 'Shift' },
+                { key: 'alt', label: 'Alt' }
+            ];
+            
+            modifiers.forEach(mod => {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `${action}-${mod.key}`;
+                checkbox.checked = config[mod.key];
+                checkbox.dataset.action = action;
+                checkbox.dataset.modifier = mod.key;
+                checkbox.style.cssText = 'cursor: pointer;';
+                
+                const label = document.createElement('label');
+                label.htmlFor = checkbox.id;
+                label.textContent = mod.label;
+                label.style.cssText = 'font-size: 12px; cursor: pointer; color: var(--text-secondary);';
+                
+                checkbox.addEventListener('change', () => updateHotkeyDisplay(action));
+                
+                modifiersContainer.appendChild(checkbox);
+                modifiersContainer.appendChild(label);
+            });
+            
+            const keyInput = document.createElement('input');
+            keyInput.type = 'text';
+            keyInput.id = `hotkey-input-${action}`;
+            keyInput.value = config.key.toUpperCase();
+            keyInput.readOnly = true;
+            keyInput.dataset.action = action;
+            keyInput.style.cssText = `
+                width: 80px;
+                padding: 6px 10px;
+                font-size: 13px;
+                border: 1px solid var(--border-color);
+                background: var(--background-primary);
+                color: var(--text-secondary);
+                border-radius: var(--radius-md);
+                text-align: center;
+                cursor: pointer;
+            `;
+            keyInput.title = 'Нажмите для изменения';
+            
+            keyInput.addEventListener('click', () => {
+                keyInput.value = '...';
+                keyInput.style.borderColor = 'var(--primary-color)';
+                
+                const captureHandler = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    let keyValue = e.key.toLowerCase();
+                    
+                    // Игнорируем модификаторы
+                    if (['control', 'shift', 'alt', 'meta'].includes(keyValue)) {
+                        return;
+                    }
+                    
+                    // Обновляем состояние модификаторов
+                    const checkboxes = modifiersContainer.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(cb => {
+                        if (cb.dataset.modifier === 'ctrl') cb.checked = e.ctrlKey;
+                        if (cb.dataset.modifier === 'shift') cb.checked = e.shiftKey;
+                        if (cb.dataset.modifier === 'alt') cb.checked = e.altKey;
+                    });
+                    
+                    keyInput.value = keyValue.toUpperCase();
+                    keyInput.style.borderColor = '';
+                    
+                    window.removeEventListener('keydown', captureHandler);
+                };
+                
+                setTimeout(() => window.addEventListener('keydown', captureHandler), 10);
+            });
+            
+            inputContainer.appendChild(modifiersContainer);
+            inputContainer.appendChild(keyInput);
+            
+            row.appendChild(desc);
+            row.appendChild(inputContainer);
+            container.appendChild(row);
+        }
+    }
+    
+    // Обновление отображения горячей клавиши (вспомогательная функция)
+    function updateHotkeyDisplay(action) {
+        // Просто сохраняем текущее состояние -实际ное сохранение происходит при нажатии "Сохранить"
+    }
+    
+    // Сохранение настроек горячих клавиш
+    window.saveHotkeys = function() {
+        const hotkeys = {};
+        const rows = document.querySelectorAll('#hotkeysList .hotkey-row');
+        
+        rows.forEach(row => {
+            const checkboxes = row.querySelectorAll('input[type="checkbox"]');
+            const keyInput = row.querySelector('input[type="text"]');
+            
+            if (!keyInput || !keyInput.dataset.action) return;
+            
+            const action = keyInput.dataset.action;
+            const key = keyInput.value.toLowerCase();
+            
+            let ctrl = false, shift = false, alt = false;
+            checkboxes.forEach(cb => {
+                if (cb.dataset.modifier === 'ctrl') ctrl = cb.checked;
+                if (cb.dataset.modifier === 'shift') shift = cb.checked;
+                if (cb.dataset.modifier === 'alt') alt = cb.checked;
+            });
+            
+            hotkeys[action] = {
+                key,
+                ctrl,
+                shift,
+                alt,
+                description: defaultHotkeys[action]?.description || action
+            };
+        });
+        
+        saveHotkeysToStorage(hotkeys);
+        console.log('✅ Горячие клавиши сохранены:', hotkeys);
+        closeHotkeysModal();
+    };
+    
+    // Сброс к значениям по умолчанию
+    window.resetHotkeysToDefault = function() {
+        localStorage.removeItem('userHotkeys');
+        renderHotkeysList();
+        console.log('✅ Горячие клавиши сброшены к значениям по умолчанию');
+    };
+    
+    console.log('✅ Функции окна горячих клавиш добавлены');
+    
     console.log('✅ Глобальные функции истории добавлены');
 
     console.log('✅ История изменений загружена (showHistoryModal глобальная)');
