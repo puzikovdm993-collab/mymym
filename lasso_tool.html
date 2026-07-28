@@ -153,6 +153,12 @@
         let clipboardData = null;
         let clipboardPosition = { x: 0, y: 0 };
         
+        // Объект выделения для поддержки состояния
+        const selection = {
+            active: false,
+            bounds: { x: 0, y: 0, w: 0, h: 0 }
+        };
+        
         // Настройки рисования
         let brushColor = '#000000';
         let brushSize = 3;
@@ -306,6 +312,9 @@
             clearOverlay();
             selectionPoints = [];
             
+            // Обновляем состояние выделения
+            selection.active = true;
+            
             // Переключаемся в режим перемещения
             setTool('move');
         }
@@ -354,6 +363,14 @@
                 width: maxX - minX,
                 height: maxY - minY
             };
+            
+            // Обновляем объект выделения
+            selection.bounds = {
+                x: minX,
+                y: minY,
+                w: maxX - minX,
+                h: maxY - minY
+            };
         }
 
         function captureSelection() {
@@ -386,6 +403,8 @@
             selectionPath = null;
             selectedImageData = null;
             selectionBounds = null;
+            selection.active = false;
+            selection.bounds = { x: 0, y: 0, w: 0, h: 0 };
             clearOverlay();
         }
 
@@ -583,6 +602,101 @@
                 finishSelection();
             }
         });
+
+        // Состояние клавиш
+        const keys = {
+            shift: false,
+            ctrl: false,
+            alt: false
+        };
+
+        // Обработчики нажатий клавиш
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') keys.shift = true;
+            if (e.key === 'Control' || e.metaKey) keys.ctrl = true;
+            if (e.key === 'Alt') keys.alt = true;
+
+            // Горячие клавиши действий
+            if (keys.ctrl && !e.repeat) {
+                switch(e.key.toLowerCase()) {
+                    case 'c':
+                        e.preventDefault();
+                        copySelection();
+                        break;
+                    case 'x':
+                        e.preventDefault();
+                        cutSelection();
+                        break;
+                    case 'v':
+                        e.preventDefault();
+                        pasteClipboard();
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        console.log('Undo (Ctrl+Z) - не реализовано в демо');
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        deleteSelection();
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        selectAll();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (currentTool !== 'draw') deleteSelection();
+            }
+            
+            if (e.key === 'Escape') {
+                clearSelection();
+            }
+
+            updateStatusbar();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') keys.shift = false;
+            if (e.key === 'Control' || e.metaKey) keys.ctrl = false;
+            if (e.key === 'Alt') keys.alt = false;
+            updateStatusbar();
+        });
+
+        function updateStatusbar() {
+            const statusEl = document.getElementById('status');
+            let mods = [];
+            if (keys.ctrl) mods.push('Ctrl');
+            if (keys.shift) mods.push('Shift');
+            if (keys.alt) mods.push('Alt');
+            
+            let text = `Инструмент: ${currentTool.toUpperCase()} | Координаты: ${lastX}, ${lastY}`;
+            if (mods.length > 0) text += ` | Модификаторы: ${mods.join('+')}`;
+            
+            if (selection.active) {
+                text += ` | Выделение: ${Math.round(selection.bounds.w)}x${Math.round(selection.bounds.h)}`;
+                if (clipboard.data) text += ' | Буфер: есть';
+            }
+            
+            statusEl.textContent = text;
+        }
+
+        // Функция выделения всего холста
+        function selectAll() {
+            if (currentTool === 'lasso') {
+                selectionPoints = [
+                    {x: 0, y: 0},
+                    {x: mainCanvas.width, y: 0},
+                    {x: mainCanvas.width, y: mainCanvas.height},
+                    {x: 0, y: mainCanvas.height}
+                ];
+                finishSelection();
+            } else {
+                // Если уже в режиме перемещения или есть выделение - просто показываем сообщение
+                alert('Переключитесь на инструмент Лассо для использования Ctrl+A');
+            }
+        }
 
         console.log('Приложение запущено! Используйте инструменты для работы с лассо.');
     </script>
