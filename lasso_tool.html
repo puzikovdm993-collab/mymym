@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lasso Tool - MS Paint Style</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+
+        .toolbar {
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: 1px solid #999;
+            background: #f9f9f9;
+            border-radius: 3px;
+        }
+
+        .toolbar button:hover {
+            background: #e9e9e9;
+        }
+
+        .toolbar button.active {
+            background: #0078d4;
+            color: white;
+            border-color: #005a9e;
+        }
+
+        .toolbar label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            border: 2px solid #666;
+            background: white;
+            cursor: crosshair;
+        }
+
+        #mainCanvas {
+            display: block;
+        }
+
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ccc;
+            max-width: 800px;
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button id="btnDraw" class="active">✏️ Рисование</button>
+        <button id="btnLasso">🎯 Лассо</button>
+        <button id="btnMove">✋ Перемещение</button>
+        <button id="btnCopy">📋 Копировать</button>
+        <button id="btnCut">✂️ Вырезать</button>
+        <button id="btnPaste">📄 Вставить</button>
+        <button id="btnDelete">🗑️ Удалить</button>
+        <button id="btnClear">🧹 Очистить всё</button>
+        
+        <label>
+            Цвет:
+            <input type="color" id="colorPicker" value="#000000">
+        </label>
+        
+        <label>
+            Размер:
+            <input type="range" id="brushSize" min="1" max="50" value="3">
+            <span id="brushSizeValue">3</span>
+        </label>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="mainCanvas" width="800" height="600"></canvas>
+        <canvas id="overlayCanvas" width="800" height="600"></canvas>
+    </div>
+
+    <div class="instructions">
+        <h3>Инструкция по использованию инструмента Лассо:</h3>
+        <ul>
+            <li><strong>Рисование:</strong> Выберите режим рисования и рисуйте на холсте</li>
+            <li><strong>Лассо:</strong> Обведите область для выделения (замкните контур)</li>
+            <li><strong>Перемещение:</strong> Перетащите выделенную область в новое место</li>
+            <li><strong>Копировать:</strong> Скопирует выделенную область в буфер</li>
+            <li><strong>Вырезать:</strong> Вырежет выделенную область в буфер</li>
+            <li><strong>Вставить:</strong> Вставит содержимое буфера на холст</li>
+            <li><strong>Удалить:</strong> Удалит выделенную область</li>
+            <li><strong>Очистить всё:</strong> Очистит весь холст</li>
+        </ul>
+    </div>
+
+    <script>
+        // Инициализация канвасов
+        const mainCanvas = document.getElementById('mainCanvas');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const overlayCtx = overlayCanvas.getContext('2d');
+
+        // Состояние приложения
+        let currentTool = 'draw'; // draw, lasso, move
+        let isDrawing = false;
+        let isSelecting = false;
+        let isMoving = false;
+        let selectionPoints = [];
+        let selectionPath = null;
+        let selectedImageData = null;
+        let selectionBounds = null;
+        let clipboardData = null;
+        let clipboardPosition = { x: 0, y: 0 };
+        
+        // Объект выделения для поддержки состояния
+        const selection = {
+            active: false,
+            bounds: { x: 0, y: 0, w: 0, h: 0 }
+        };
+        
+        // Настройки рисования
+        let brushColor = '#000000';
+        let brushSize = 3;
+        let lastX = 0;
+        let lastY = 0;
+
+        // Заполняем белый фон
+        function fillWhite() {
+            mainCtx.fillStyle = 'white';
+            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        }
+
+        fillWhite();
+
+        // Обработчики кнопок
+        document.getElementById('btnDraw').addEventListener('click', () => setTool('draw'));
+        document.getElementById('btnLasso').addEventListener('click', () => setTool('lasso'));
+        document.getElementById('btnMove').addEventListener('click', () => setTool('move'));
+        document.getElementById('btnCopy').addEventListener('click', copySelection);
+        document.getElementById('btnCut').addEventListener('click', cutSelection);
+        document.getElementById('btnPaste').addEventListener('click', pasteClipboard);
+        document.getElementById('btnDelete').addEventListener('click', deleteSelection);
+        document.getElementById('btnClear').addEventListener('click', () => {
+            fillWhite();
+            clearSelection();
+        });
+
+        document.getElementById('colorPicker').addEventListener('change', (e) => {
+            brushColor = e.target.value;
+        });
+
+        document.getElementById('brushSize').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            document.getElementById('brushSizeValue').textContent = brushSize;
+        });
+
+        function setTool(tool) {
+            currentTool = tool;
+            
+            // Обновляем активную кнопку
+            document.querySelectorAll('.toolbar button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (tool === 'draw') document.getElementById('btnDraw').classList.add('active');
+            else if (tool === 'lasso') document.getElementById('btnLasso').classList.add('active');
+            else if (tool === 'move') document.getElementById('btnMove').classList.add('active');
+
+            // Сбрасываем состояние выделения если переключаемся с лассо
+            if (tool !== 'lasso' && isSelecting) {
+                finishSelection();
+            }
+        }
+
+        // Получение координат мыши
+        function getMousePos(e) {
+            const rect = mainCanvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Рисование
+        function startDrawing(e) {
+            if (currentTool !== 'draw') return;
+            
+            isDrawing = true;
+            const pos = getMousePos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            
+            // Рисуем точку
+            mainCtx.beginPath();
+            mainCtx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+            mainCtx.fillStyle = brushColor;
+            mainCtx.fill();
+        }
+
+        function draw(e) {
+            if (!isDrawing || currentTool !== 'draw') return;
+            
+            const pos = getMousePos(e);
+            
+            mainCtx.beginPath();
+            mainCtx.moveTo(lastX, lastY);
+            mainCtx.lineTo(pos.x, pos.y);
+            mainCtx.strokeStyle = brushColor;
+            mainCtx.lineWidth = brushSize;
+            mainCtx.lineCap = 'round';
+            mainCtx.stroke();
+            
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        // Лассо выделение
+        function startSelection(e) {
+            if (currentTool !== 'lasso') return;
+            
+            isSelecting = true;
+            selectionPoints = [];
+            const pos = getMousePos(e);
+            selectionPoints.push(pos);
+            
+            clearOverlay();
+        }
+
+        function updateSelection(e) {
+            if (!isSelecting || currentTool !== 'lasso') return;
+            
+            const pos = getMousePos(e);
+            selectionPoints.push(pos);
+            
+            // Рисуем текущий контур на оверлее
+            drawSelectionPath();
+        }
+
+        function finishSelection() {
+            if (!isSelecting) return;
+            
+            isSelecting = false;
+            
+            // Проверяем, замкнут ли контур (достаточно близко к началу)
+            if (selectionPoints.length < 3) {
+                clearOverlay();
+                selectionPoints = [];
+                return;
+            }
+            
+            // Создаем путь из точек
+            selectionPath = new Path2D();
+            selectionPath.moveTo(selectionPoints[0].x, selectionPoints[0].y);
+            
+            for (let i = 1; i < selectionPoints.length; i++) {
+                selectionPath.lineTo(selectionPoints[i].x, selectionPoints[i].y);
+            }
+            
+            selectionPath.closePath();
+            
+            // Вычисляем границы выделения
+            calculateSelectionBounds();
+            
+            // Копируем данные из выделенной области
+            captureSelection();
+            
+            clearOverlay();
+            selectionPoints = [];
+            
+            // Обновляем состояние выделения
+            selection.active = true;
+            
+            // Переключаемся в режим перемещения
+            setTool('move');
+        }
+
+        function drawSelectionPath() {
+            clearOverlay();
+            
+            if (selectionPoints.length === 0) return;
+            
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(selectionPoints[0].x, selectionPoints[0].y);
+            
+            for (let i = 1; i < selectionPoints.length; i++) {
+                overlayCtx.lineTo(selectionPoints[i].x, selectionPoints[i].y);
+            }
+            
+            overlayCtx.strokeStyle = '#000';
+            overlayCtx.lineWidth = 1;
+            overlayCtx.setLineDash([5, 5]);
+            overlayCtx.stroke();
+            overlayCtx.setLineDash([]);
+            
+            // Рисуем точки
+            overlayCtx.fillStyle = '#000';
+            selectionPoints.forEach(point => {
+                overlayCtx.fillRect(point.x - 2, point.y - 2, 4, 4);
+            });
+        }
+
+        function calculateSelectionBounds() {
+            if (selectionPoints.length === 0) return;
+            
+            let minX = Infinity, minY = Infinity;
+            let maxX = -Infinity, maxY = -Infinity;
+            
+            selectionPoints.forEach(point => {
+                minX = Math.min(minX, point.x);
+                minY = Math.min(minY, point.y);
+                maxX = Math.max(maxX, point.x);
+                maxY = Math.max(maxY, point.y);
+            });
+            
+            selectionBounds = {
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY
+            };
+            
+            // Обновляем объект выделения
+            selection.bounds = {
+                x: minX,
+                y: minY,
+                w: maxX - minX,
+                h: maxY - minY
+            };
+        }
+
+        function captureSelection() {
+            if (!selectionBounds) return;
+            
+            const { x, y, width, height } = selectionBounds;
+            
+            // Создаем временный канвас для хранения выделенных данных
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width + 10;
+            tempCanvas.height = height + 10;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Копируем пиксели из основной области
+            try {
+                const imageData = mainCtx.getImageData(x - 5, y - 5, width + 10, height + 10);
+                tempCtx.putImageData(imageData, 0, 0);
+                
+                selectedImageData = {
+                    canvas: tempCanvas,
+                    offsetX: x - 5,
+                    offsetY: y - 5
+                };
+            } catch (e) {
+                console.error('Ошибка копирования выделения:', e);
+            }
+        }
+
+        function clearSelection() {
+            selectionPath = null;
+            selectedImageData = null;
+            selectionBounds = null;
+            selection.active = false;
+            selection.bounds = { x: 0, y: 0, w: 0, h: 0 };
+            clearOverlay();
+        }
+
+        function clearOverlay() {
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+        }
+
+        // Перемещение
+        let moveStartX = 0;
+        let moveStartY = 0;
+        let moveOffsetX = 0;
+        let moveOffsetY = 0;
+
+        function startMove(e) {
+            if (currentTool !== 'move' || !selectedImageData) return;
+            
+            isMoving = true;
+            const pos = getMousePos(e);
+            moveStartX = pos.x;
+            moveStartY = pos.y;
+            moveOffsetX = 0;
+            moveOffsetY = 0;
+        }
+
+        function updateMove(e) {
+            if (!isMoving || currentTool !== 'move' || !selectedImageData) return;
+            
+            const pos = getMousePos(e);
+            moveOffsetX = pos.x - moveStartX;
+            moveOffsetY = pos.y - moveStartY;
+            
+            drawMovingSelection();
+        }
+
+        function stopMove() {
+            if (!isMoving || !selectedImageData) return;
+            
+            isMoving = false;
+            
+            // Применяем перемещение
+            applyMove();
+        }
+
+        function drawMovingSelection() {
+            clearOverlay();
+            
+            if (!selectedImageData) return;
+            
+            const { canvas, offsetX, offsetY } = selectedImageData;
+            
+            // Рисуем рамку вокруг перемещаемой области
+            const newX = offsetX + moveOffsetX;
+            const newY = offsetY + moveOffsetY;
+            
+            overlayCtx.save();
+            overlayCtx.setLineDash([5, 5]);
+            overlayCtx.strokeStyle = '#000';
+            overlayCtx.lineWidth = 1;
+            overlayCtx.strokeRect(newX - 1, newY - 1, canvas.width + 2, canvas.height + 2);
+            overlayCtx.restore();
+            
+            // Показываем полупрозрачное изображение
+            overlayCtx.globalAlpha = 0.7;
+            overlayCtx.drawImage(canvas, newX, newY);
+            overlayCtx.globalAlpha = 1.0;
+        }
+
+        function applyMove() {
+            if (!selectedImageData) return;
+            
+            const { canvas, offsetX, offsetY } = selectedImageData;
+            const newX = offsetX + moveOffsetX;
+            const newY = offsetY + moveOffsetY;
+            
+            // Очищаем старую область (можно сделать прозрачной или белой)
+            // Для простоты оставляем как есть
+            
+            // Рисуем на новом месте
+            mainCtx.drawImage(canvas, newX, newY);
+            
+            // Обновляем позицию выделения
+            selectedImageData.offsetX = newX;
+            selectedImageData.offsetY = newY;
+            
+            moveOffsetX = 0;
+            moveOffsetY = 0;
+            
+            clearOverlay();
+        }
+
+        // Операции с буфером обмена
+        function copySelection() {
+            if (!selectedImageData) {
+                alert('Сначала выделите область с помощью лассо!');
+                return;
+            }
+            
+            clipboardData = { ...selectedImageData };
+            clipboardPosition = {
+                x: selectedImageData.offsetX,
+                y: selectedImageData.offsetY
+            };
+            
+            alert('Область скопирована в буфер обмена!');
+        }
+
+        function cutSelection() {
+            if (!selectedImageData) {
+                alert('Сначала выделите область с помощью лассо!');
+                return;
+            }
+            
+            copySelection();
+            deleteSelection();
+        }
+
+        function pasteClipboard() {
+            if (!clipboardData) {
+                alert('Буфер обмена пуст!');
+                return;
+            }
+            
+            // Создаем копию данных буфера
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = clipboardData.canvas.width;
+            tempCanvas.height = clipboardData.canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(clipboardData.canvas, 0, 0);
+            
+            selectedImageData = {
+                canvas: tempCanvas,
+                offsetX: clipboardPosition.x + 10,
+                offsetY: clipboardPosition.y + 10
+            };
+            
+            // Обновляем границы выделения
+            selectionBounds = {
+                x: selectedImageData.offsetX,
+                y: selectedImageData.offsetY,
+                width: selectedImageData.canvas.width,
+                height: selectedImageData.canvas.height
+            };
+            
+            setTool('move');
+            clearOverlay();
+        }
+
+        function deleteSelection() {
+            if (!selectedImageData) {
+                alert('Сначала выделите область с помощью лассо!');
+                return;
+            }
+            
+            const { offsetX, offsetY, canvas } = selectedImageData;
+            
+            // Закрашиваем белым
+            mainCtx.fillStyle = 'white';
+            mainCtx.fillRect(offsetX, offsetY, canvas.width, canvas.height);
+            
+            clearSelection();
+        }
+
+        // Обработчики событий мыши
+        mainCanvas.addEventListener('mousedown', (e) => {
+            if (currentTool === 'draw') startDrawing(e);
+            else if (currentTool === 'lasso') startSelection(e);
+            else if (currentTool === 'move') startMove(e);
+        });
+
+        mainCanvas.addEventListener('mousemove', (e) => {
+            if (currentTool === 'draw') draw(e);
+            else if (currentTool === 'lasso') updateSelection(e);
+            else if (currentTool === 'move') updateMove(e);
+        });
+
+        mainCanvas.addEventListener('mouseup', () => {
+            if (currentTool === 'draw') stopDrawing();
+            else if (currentTool === 'lasso') finishSelection();
+            else if (currentTool === 'move') stopMove();
+        });
+
+        mainCanvas.addEventListener('mouseleave', () => {
+            if (currentTool === 'draw') stopDrawing();
+            else if (currentTool === 'lasso') {
+                isSelecting = false;
+                clearOverlay();
+                selectionPoints = [];
+            }
+            else if (currentTool === 'move') stopMove();
+        });
+
+        // Двойной клик для завершения выделения (альтернатива)
+        mainCanvas.addEventListener('dblclick', (e) => {
+            if (currentTool === 'lasso' && isSelecting) {
+                finishSelection();
+            }
+        });
+
+        // Состояние клавиш
+        const keys = {
+            shift: false,
+            ctrl: false,
+            alt: false
+        };
+
+        // Обработчики нажатий клавиш
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') keys.shift = true;
+            if (e.key === 'Control' || e.metaKey) keys.ctrl = true;
+            if (e.key === 'Alt') keys.alt = true;
+
+            // Горячие клавиши действий
+            if (keys.ctrl && !e.repeat) {
+                switch(e.key.toLowerCase()) {
+                    case 'c':
+                        e.preventDefault();
+                        copySelection();
+                        break;
+                    case 'x':
+                        e.preventDefault();
+                        cutSelection();
+                        break;
+                    case 'v':
+                        e.preventDefault();
+                        pasteClipboard();
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        console.log('Undo (Ctrl+Z) - не реализовано в демо');
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        deleteSelection();
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        selectAll();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (currentTool !== 'draw') deleteSelection();
+            }
+            
+            if (e.key === 'Escape') {
+                clearSelection();
+            }
+
+            updateStatusbar();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') keys.shift = false;
+            if (e.key === 'Control' || e.metaKey) keys.ctrl = false;
+            if (e.key === 'Alt') keys.alt = false;
+            updateStatusbar();
+        });
+
+        function updateStatusbar() {
+            const statusEl = document.getElementById('status');
+            let mods = [];
+            if (keys.ctrl) mods.push('Ctrl');
+            if (keys.shift) mods.push('Shift');
+            if (keys.alt) mods.push('Alt');
+            
+            let text = `Инструмент: ${currentTool.toUpperCase()} | Координаты: ${lastX}, ${lastY}`;
+            if (mods.length > 0) text += ` | Модификаторы: ${mods.join('+')}`;
+            
+            if (selection.active) {
+                text += ` | Выделение: ${Math.round(selection.bounds.w)}x${Math.round(selection.bounds.h)}`;
+                if (clipboard.data) text += ' | Буфер: есть';
+            }
+            
+            statusEl.textContent = text;
+        }
+
+        // Функция выделения всего холста
+        function selectAll() {
+            if (currentTool === 'lasso') {
+                selectionPoints = [
+                    {x: 0, y: 0},
+                    {x: mainCanvas.width, y: 0},
+                    {x: mainCanvas.width, y: mainCanvas.height},
+                    {x: 0, y: mainCanvas.height}
+                ];
+                finishSelection();
+            } else {
+                // Если уже в режиме перемещения или есть выделение - просто показываем сообщение
+                alert('Переключитесь на инструмент Лассо для использования Ctrl+A');
+            }
+        }
+
+        console.log('Приложение запущено! Используйте инструменты для работы с лассо.');
+    </script>
+</body>
+</html>
