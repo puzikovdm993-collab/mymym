@@ -97,10 +97,16 @@
         <button id="btnClearSelection">❌ Снять выделение</button>
         <button id="btnInvertSelection">🔄 Инвертировать</button>
         <label>
-            Цвет: <input type="color" id="colorPicker" value="#000000">
+            Цвет кисти: <input type="color" id="colorPicker" value="#000000">
+        </label>
+        <label>
+            Цвет заливки: <input type="color" id="fillColorPicker" value="#ffff00">
         </label>
         <label>
             Размер: <input type="range" id="brushSize" min="1" max="20" value="2">
+        </label>
+        <label>
+            <input type="checkbox" id="fillEnabled"> Заливка выделения
         </label>
     </div>
 
@@ -116,6 +122,7 @@
             <li><strong>Лассо:</strong> Обведите область для выделения (замкните контур)</li>
             <li><strong>Перемещение:</strong> Перетаскивайте выделенные области</li>
             <li><strong>Multiselect:</strong> Зажмите Shift для добавления к выделению</li>
+            <li><strong>Заливка:</strong> Включите чекбокс "Заливка выделения" и выберите цвет</li>
             <li><strong>Ctrl+Z:</strong> Отменить последнее действие</li>
         </ul>
         <div id="selectionInfo" class="selection-info">
@@ -130,6 +137,8 @@
         const mainCtx = mainCanvas.getContext('2d');
         const overlayCtx = overlayCanvas.getContext('2d');
         const colorPicker = document.getElementById('colorPicker');
+        const fillColorPicker = document.getElementById('fillColorPicker');
+        const fillEnabledCheckbox = document.getElementById('fillEnabled');
         const brushSizeInput = document.getElementById('brushSize');
         const selectionInfo = document.getElementById('selectionInfo');
         const selectionCountSpan = document.getElementById('selectionCount');
@@ -276,12 +285,22 @@
             maskCtx.fillStyle = '#000000';
             maskCtx.fill();
 
+            // Применяем заливку если включена
+            if (fillEnabledCheckbox.checked) {
+                const fillColor = fillColorPicker.value;
+                maskCtx.globalCompositeOperation = 'source-atop';
+                maskCtx.fillStyle = fillColor;
+                maskCtx.fillRect(0, 0, bbox.width, bbox.height);
+                maskCtx.globalCompositeOperation = 'source-over';
+            }
+
             const selection = {
                 points: lassoPoints.map(p => ({ x: p.x, y: p.y })),
                 bbox: bbox,
                 imageData: tempCtx.getImageData(0, 0, bbox.width, bbox.height),
                 mask: maskCtx.getImageData(0, 0, bbox.width, bbox.height),
-                offset: { x: 0, y: 0 }
+                offset: { x: 0, y: 0 },
+                fillColor: fillEnabledCheckbox.checked ? fillColorPicker.value : null
             };
 
             selections.push(selection);
@@ -343,11 +362,28 @@
 
                     overlayCtx.save();
                     overlayCtx.globalAlpha = 0.7;
-                    overlayCtx.drawImage(
-                        tempCanvas,
-                        selection.bbox.x + selection.offset.x + moveOffset.x,
-                        selection.bbox.y + selection.offset.y + moveOffset.y
-                    );
+                    
+                    // Применяем заливку если она есть
+                    if (selection.fillColor) {
+                        // Сначала рисуем маску с заливкой
+                        const maskCanvas = document.createElement('canvas');
+                        maskCanvas.width = selection.bbox.width;
+                        maskCanvas.height = selection.bbox.height;
+                        const maskCtx = maskCanvas.getContext('2d');
+                        maskCtx.putImageData(selection.mask, 0, 0);
+                        
+                        overlayCtx.drawImage(
+                            maskCanvas,
+                            selection.bbox.x + selection.offset.x + moveOffset.x,
+                            selection.bbox.y + selection.offset.y + moveOffset.y
+                        );
+                    } else {
+                        overlayCtx.drawImage(
+                            tempCanvas,
+                            selection.bbox.x + selection.offset.x + moveOffset.x,
+                            selection.bbox.y + selection.offset.y + moveOffset.y
+                        );
+                    }
                     overlayCtx.restore();
                 }
             });
