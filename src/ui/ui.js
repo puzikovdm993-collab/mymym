@@ -122,6 +122,14 @@ function zoomReset() {
         dom.zoomLevel.textContent = `Масштаб: ${Math.round(zoom * 100)}%`;
         // Пример: если zoom = 1.5, отобразится "150%"
     }
+    
+    // После изменения масштаба центрируем изображение при первом увеличении
+    // или позволяем скроллбарам работать, когда изображение больше контейнера
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    if (canvasWrapper) {
+        // Убеждаемся, что overflow установлен правильно для отображения скроллбаров
+        canvasWrapper.style.overflow = 'auto';
+    }
 }
 // function zoomCustom()
 
