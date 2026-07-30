@@ -131,6 +131,9 @@ function zoomReset() {
         return;
     }
 
+    // Получаем контейнер wrapper
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    
     // Получаем текущие размеры canvas до изменения стиля
     const oldCanvasWidth = file.canvas.width * previousZoom;
     const oldCanvasHeight = file.canvas.height * previousZoom;
@@ -153,25 +156,31 @@ function zoomReset() {
     }
     
     // После изменения масштаба центрируем изображение относительно курсора
-    const canvasWrapper = document.getElementById('canvasWrapper');
-    if (canvasWrapper && mouseX !== undefined && mouseY !== undefined && mouseX !== null && mouseY !== null) {
+    if (canvasWrapper && mouseX !== undefined && mouseY !== undefined && mouseX !== null && mouseY !== null && previousZoom > 0) {
         // Убеждаемся, что overflow установлен правильно для отображения скроллбаров
         canvasWrapper.style.overflow = 'auto';
-        
-        // Получаем позицию canvas относительно окна ДО прокрутки
-        const rect = file.canvas.getBoundingClientRect();
-        
-        // Вычисляем положение курсора относительно canvas
-        const cursorXRelativeToCanvas = mouseX - rect.left + canvasWrapper.scrollLeft;
-        const cursorYRelativeToCanvas = mouseY - rect.top + canvasWrapper.scrollTop;
         
         // Вычисляем коэффициент масштабирования
         const scaleFactor = zoom / previousZoom;
         
-        // Прокручиваем так, чтобы точка под курсором осталась на том же месте
-        // Новая позиция = позиция курсора * коэффициент масштабирования - половина видимой области
-        canvasWrapper.scrollLeft = cursorXRelativeToCanvas * scaleFactor - (cursorXRelativeToCanvas - canvasWrapper.scrollLeft);
-        canvasWrapper.scrollTop = cursorYRelativeToCanvas * scaleFactor - (cursorYRelativeToCanvas - canvasWrapper.scrollTop);
+        // Получаем текущую прокрутку ДО изменения масштаба
+        const scrollLeftBefore = canvasWrapper.scrollLeft;
+        const scrollTopBefore = canvasWrapper.scrollTop;
+        
+        // Получаем позицию canvas относительно окна
+        const rect = file.canvas.getBoundingClientRect();
+        
+        // Вычисляем положение курсора относительно canvas с учетом текущей прокрутки
+        const cursorXRelativeToCanvas = (mouseX - rect.left) / previousZoom;
+        const cursorYRelativeToCanvas = (mouseY - rect.top) / previousZoom;
+        
+        // Вычисляем новую прокрутку так, чтобы точка под курсором осталась на том же месте
+        const newScrollLeft = (scrollLeftBefore + cursorXRelativeToCanvas) * scaleFactor - cursorXRelativeToCanvas;
+        const newScrollTop = (scrollTopBefore + cursorYRelativeToCanvas) * scaleFactor - cursorYRelativeToCanvas;
+        
+        // Применяем новую прокрутку
+        canvasWrapper.scrollLeft = newScrollLeft;
+        canvasWrapper.scrollTop = newScrollTop;
     } else if (canvasWrapper) {
         // Если координаты мыши не переданы, центрируем изображение в контейнере
         canvasWrapper.style.overflow = 'auto';
