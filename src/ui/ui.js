@@ -129,6 +129,25 @@ function zoomReset() {
     if (canvasWrapper) {
         // Убеждаемся, что overflow установлен правильно для отображения скроллбаров
         canvasWrapper.style.overflow = 'auto';
+        
+        // Центрируем изображение в контейнере после масштабирования
+        const newCanvasWidth = file.canvas.width * zoom;
+        const newCanvasHeight = file.canvas.height * zoom;
+        const wrapperRect = canvasWrapper.getBoundingClientRect();
+        
+        // Прокручиваем так, чтобы центр изображения был виден
+        // Только если изображение больше контейнера
+        if (newCanvasWidth > wrapperRect.width) {
+            canvasWrapper.scrollLeft = (newCanvasWidth - wrapperRect.width) / 2;
+        } else {
+            canvasWrapper.scrollLeft = 0;
+        }
+        
+        if (newCanvasHeight > wrapperRect.height) {
+            canvasWrapper.scrollTop = (newCanvasHeight - wrapperRect.height) / 2;
+        } else {
+            canvasWrapper.scrollTop = 0;
+        }
     }
 }
 // function zoomCustom()
