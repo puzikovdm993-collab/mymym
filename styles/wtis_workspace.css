@@ -801,11 +801,17 @@ body  {
     height: 100%;
     position: relative;
     overflow: auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: block;
     background: var(--background-secondary);
     /* padding: 20px; */
+    text-align: center;
+}
+
+.canvas-wrapper::before {
+    content: '';
+    display: inline-block;
+    height: 100%;
+    vertical-align: middle;
 }
 
 #overlayCanvas {
@@ -820,7 +826,8 @@ body  {
 
 #canvasHost {
     position: relative;
-    display: block;
+    display: inline-block;
+    vertical-align: middle;
     z-index: 1;
 }
 
