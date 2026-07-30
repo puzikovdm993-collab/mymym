@@ -801,7 +801,9 @@ body  {
     height: 100%;
     position: relative;
     overflow: auto;
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     background: var(--background-secondary);
     /* padding: 20px; */
 }
