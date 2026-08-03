@@ -215,10 +215,16 @@ function handleRadialMenuAction(action) {
             console.log('Вырезание: функция недоступна');
             break;
         case 'zoomIn':
-            if (typeof zoomIn === 'function') zoomIn();
+            if (typeof zoomIn === 'function') {
+                // Для радиального меню передаем null, чтобы центрировать
+                zoomIn(null, null);
+            }
             break;
         case 'zoomOut':
-            if (typeof zoomOut === 'function') zoomOut();
+            if (typeof zoomOut === 'function') {
+                // Для радиального меню передаем null, чтобы центрировать
+                zoomOut(null, null);
+            }
             break;
         case 'rotate':
             if (typeof rotateCanvas === 'function') rotateCanvas(90);

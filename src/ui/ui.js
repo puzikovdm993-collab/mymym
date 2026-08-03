@@ -81,25 +81,46 @@ function updateActiveFilePreviewLocal(fileId) {
 
 
 // ============ Управление масштабом ============
-function zoomIn() {
+let previousZoom = 1; // Сохраняем предыдущий масштаб для вычислений
+
+function zoomIn(mouseX, mouseY) {
+    const file = getActiveFile();
+    if (!file || !file.canvas) return;
+    
+    // Сохраняем текущий масштаб перед изменением
+    previousZoom = zoom;
+    
+    // Увеличиваем масштаб
     zoom = Math.min(zoom * 1.2, 32);
-    applyZoom();
+    
+    applyZoom(mouseX, mouseY);
 }
 
-function zoomOut() {
+function zoomOut(mouseX, mouseY) {
+    const file = getActiveFile();
+    if (!file || !file.canvas) return;
+    
+    // Сохраняем текущий масштаб перед изменением
+    previousZoom = zoom;
+    
+    // Уменьшаем масштаб
     zoom = Math.max(zoom / 1.2, 0.01);
-    applyZoom();
+    
+    applyZoom(mouseX, mouseY);
 }
 
 function zoomReset() {
+    previousZoom = zoom;
     zoom = 1;
     applyZoom();
 }
 /**
  * Функция applyZoom() применяет масштабирование к активному холсту (canvas).
  * Обновляет размеры холста в DOM и отображает текущий уровень зума.
+ * @param {number} mouseX - X координата мыши относительно окна (для центрирования)
+ * @param {number} mouseY - Y координата мыши относительно окна (для центрирования)
  */
- function applyZoom() {
+ function applyZoom(mouseX, mouseY) {
 
     // Получаем текущий активный файл (предположительно, объект с данными изображения)
     const file = getActiveFile();
@@ -110,11 +131,22 @@ function zoomReset() {
         return;
     }
 
+    // Получаем контейнер wrapper
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    
+    // Получаем текущие размеры canvas до изменения стиля
+    const oldCanvasWidth = file.canvas.width * previousZoom;
+    const oldCanvasHeight = file.canvas.height * previousZoom;
+    
     // Масштабируем ширину холста, умножая его исходное значение на коэффициент zoom
     file.canvas.style.width = `${file.canvas.width * zoom}px`;
 
     // Масштабируем высоту холста аналогично
     file.canvas.style.height = `${file.canvas.height * zoom}px`;
+
+    // Новые размеры
+    const newCanvasWidth = file.canvas.width * zoom;
+    const newCanvasHeight = file.canvas.height * zoom;
 
     // Проверяем, существует ли элемент интерфейса для отображения уровня зума
     if (dom.zoomLevel) {
@@ -122,6 +154,56 @@ function zoomReset() {
         dom.zoomLevel.textContent = `Масштаб: ${Math.round(zoom * 100)}%`;
         // Пример: если zoom = 1.5, отобразится "150%"
     }
+    
+    // После изменения масштаба центрируем изображение относительно курсора
+    if (canvasWrapper && mouseX !== undefined && mouseY !== undefined && mouseX !== null && mouseY !== null && previousZoom > 0) {
+        // Убеждаемся, что overflow установлен правильно для отображения скроллбаров
+        canvasWrapper.style.overflow = 'auto';
+        
+        // Вычисляем коэффициент масштабирования
+        const scaleFactor = zoom / previousZoom;
+        
+        // Получаем текущую прокрутку ДО изменения масштаба
+        const scrollLeftBefore = canvasWrapper.scrollLeft;
+        const scrollTopBefore = canvasWrapper.scrollTop;
+        
+        // Получаем позицию canvas относительно окна
+        const rect = file.canvas.getBoundingClientRect();
+        
+        // Вычисляем положение курсора относительно canvas с учетом текущей прокрутки
+        const cursorXRelativeToCanvas = (mouseX - rect.left) / previousZoom;
+        const cursorYRelativeToCanvas = (mouseY - rect.top) / previousZoom;
+        
+        // Вычисляем новую прокрутку так, чтобы точка под курсором осталась на том же месте
+        const newScrollLeft = (scrollLeftBefore + cursorXRelativeToCanvas) * scaleFactor - cursorXRelativeToCanvas;
+        const newScrollTop = (scrollTopBefore + cursorYRelativeToCanvas) * scaleFactor - cursorYRelativeToCanvas;
+        
+        // Применяем новую прокрутку
+        canvasWrapper.scrollLeft = newScrollLeft;
+        canvasWrapper.scrollTop = newScrollTop;
+    } else if (canvasWrapper) {
+        // Если координаты мыши не переданы, центрируем изображение в контейнере
+        canvasWrapper.style.overflow = 'auto';
+        
+        const wrapperRect = canvasWrapper.getBoundingClientRect();
+        
+        // Прокручиваем так, чтобы центр изображения был виден
+        // Только если изображение больше контейнера
+        if (newCanvasWidth > wrapperRect.width) {
+            canvasWrapper.scrollLeft = (newCanvasWidth - wrapperRect.width) / 2;
+        } else {
+            canvasWrapper.scrollLeft = 0;
+        }
+        
+        if (newCanvasHeight > wrapperRect.height) {
+            canvasWrapper.scrollTop = (newCanvasHeight - wrapperRect.height) / 2;
+        } else {
+            canvasWrapper.scrollTop = 0;
+        }
+    }
+    
+    // Обновляем previousZoom для следующего раза
+    previousZoom = zoom;
 }
 // function zoomCustom()
 
