@@ -1,0 +1,2110 @@
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+
+    <title>Canvas Selection Editor</title>
+
+    <script src="https://unpkg.com/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            min-height: 100vh;
+        }
+
+        .toolbar {
+            width: 800px;
+            padding: 12px 0;
+
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode {
+            margin-right: auto;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        button {
+            min-width: 90px;
+            padding: 7px 12px;
+
+            border: 1px solid #555;
+            border-radius: 4px;
+
+            background: #333;
+            color: white;
+
+            cursor: pointer;
+        }
+
+        button:hover:not(:disabled) {
+            background: #444;
+        }
+
+        button.active {
+            background: #0066aa;
+            border-color: #0088ff;
+        }
+
+        button:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        canvas {
+            background: white;
+            border: 1px solid #555;
+            cursor: crosshair;
+        }
+
+        canvas.move-mode {
+            cursor: move;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="toolbar">
+
+    <div class="mode" id="mode">
+        Инструмент: Лассо
+    </div>
+
+    <button id="lasso" class="active">
+        Лассо
+    </button>
+
+    <button id="rectangle">
+        Прямоугольник
+    </button>
+
+    <button id="move">
+        Перемещение
+    </button>
+
+    <button id="moveMode">
+        Перемещать: все
+    </button>
+
+    <button id="undo" disabled>
+        ↶ Undo
+    </button>
+
+    <button id="redo" disabled>
+        Redo ↷
+    </button>
+
+    <button id="clear">
+        Очистить
+    </button>
+
+</div>
+
+
+<canvas
+    id="canvas"
+    width="800"
+    height="500">
+</canvas>
+
+
+<script>
+
+// ======================================================
+// CANVAS
+// ======================================================
+
+const canvas =
+    document.getElementById('canvas');
+
+const ctx =
+    canvas.getContext('2d');
+
+
+// ======================================================
+// UI
+// ======================================================
+
+const modeElement =
+    document.getElementById('mode');
+
+const lassoButton =
+    document.getElementById('lasso');
+
+const rectangleButton =
+    document.getElementById('rectangle');
+
+const moveButton =
+    document.getElementById('move');
+
+const moveModeButton =
+    document.getElementById('moveMode');
+
+const undoButton =
+    document.getElementById('undo');
+
+const redoButton =
+    document.getElementById('redo');
+
+const clearButton =
+    document.getElementById('clear');
+
+
+// ======================================================
+// ТЕКУЩИЙ ИНСТРУМЕНТ
+// ======================================================
+
+let tool = 'LASSO';
+
+
+// LASSO
+// RECTANGLE
+// MOVE
+
+
+// ======================================================
+// РЕЖИМ ПЕРЕМЕЩЕНИЯ
+// ======================================================
+
+let moveMode = 'ALL';
+
+
+// ALL
+// ONE
+
+
+// ======================================================
+// СОСТОЯНИЕ РИСОВАНИЯ
+// ======================================================
+
+let isDrawing = false;
+
+
+// ======================================================
+// LASSO
+// ======================================================
+
+let currentLasso = [];
+
+
+// ======================================================
+// RECTANGLE
+// ======================================================
+
+let rectangleStart = {
+    x: 0,
+    y: 0
+};
+
+let currentRectangle = null;
+
+
+// ======================================================
+// SELECTION
+// ======================================================
+
+let selection = [];
+
+
+// ======================================================
+// MOVE
+// ======================================================
+
+let isMoving = false;
+
+let moveStart = {
+    x: 0,
+    y: 0
+};
+
+let moveOffset = {
+    x: 0,
+    y: 0
+};
+
+let moveStartSelection = null;
+
+let movingPolygonIndex = -1;
+
+
+// ======================================================
+// HISTORY
+// ======================================================
+
+let history = [];
+
+let historyIndex = -1;
+
+
+// ======================================================
+// КЛОНИРОВАНИЕ SELECTION
+// ======================================================
+
+function cloneSelection(value) {
+
+    return value.map(
+        polygon =>
+            polygon.map(
+                ring =>
+                    ring.map(
+                        point => [
+                            point[0],
+                            point[1]
+                        ]
+                    )
+            )
+    );
+}
+
+
+// ======================================================
+// HISTORY
+// ======================================================
+
+function saveHistory() {
+
+    const snapshot =
+        cloneSelection(selection);
+
+    if (
+        historyIndex <
+        history.length - 1
+    ) {
+
+        history =
+            history.slice(
+                0,
+                historyIndex + 1
+            );
+    }
+
+    history.push(snapshot);
+
+    historyIndex =
+        history.length - 1;
+
+    updateHistoryButtons();
+}
+
+
+// ======================================================
+// RESTORE HISTORY
+// ======================================================
+
+function restoreHistory(index) {
+
+    if (
+        index < 0 ||
+        index >= history.length
+    ) {
+        return;
+    }
+
+    historyIndex = index;
+
+    selection =
+        cloneSelection(
+            history[index]
+        );
+
+    redraw();
+
+    updateHistoryButtons();
+}
+
+
+// ======================================================
+// UNDO
+// ======================================================
+
+function undo() {
+
+    if (isMoving) {
+        cancelMove();
+        return;
+    }
+
+    if (historyIndex <= 0) {
+        return;
+    }
+
+    restoreHistory(
+        historyIndex - 1
+    );
+}
+
+
+// ======================================================
+// REDO
+// ======================================================
+
+function redo() {
+
+    if (
+        historyIndex >=
+        history.length - 1
+    ) {
+        return;
+    }
+
+    restoreHistory(
+        historyIndex + 1
+    );
+}
+
+
+// ======================================================
+// HISTORY BUTTONS
+// ======================================================
+
+function updateHistoryButtons() {
+
+    undoButton.disabled =
+        historyIndex <= 0;
+
+    redoButton.disabled =
+        historyIndex >=
+        history.length - 1;
+}
+
+
+// ======================================================
+// RESET HISTORY
+// ======================================================
+
+function resetHistory() {
+
+    history = [];
+
+    historyIndex = -1;
+
+    selection = [];
+
+    saveHistory();
+}
+
+
+// ======================================================
+// MOUSE POSITION
+// ======================================================
+
+function getMousePosition(event) {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    return {
+        x:
+            event.clientX -
+            rect.left,
+
+        y:
+            event.clientY -
+            rect.top
+    };
+}
+
+
+// ======================================================
+// SHAPE -> POLYGON
+// ======================================================
+
+function toPolygon(shape) {
+
+    return shape.map(
+        point => [
+            point.x,
+            point.y
+        ]
+    );
+}
+
+
+// ======================================================
+// ОПРЕДЕЛЕНИЕ ОПЕРАЦИИ
+// ======================================================
+//
+// Для ЛАССО:
+// Shift       = INTERSECTION
+// Ctrl        = UNION
+// Ctrl+Shift  = DIFFERENCE
+//
+// Для ПРЯМОУГОЛЬНИКА:
+// Shift       = квадрат
+//
+// Поэтому операции прямоугольника
+// обрабатываются отдельно.
+// ======================================================
+
+function getOperation(event) {
+
+    if (
+        event.ctrlKey &&
+        event.shiftKey
+    ) {
+        return 'DIFFERENCE';
+    }
+
+    if (event.ctrlKey) {
+        return 'UNION';
+    }
+
+    if (event.shiftKey) {
+        return 'INTERSECTION';
+    }
+
+    return 'REPLACE';
+}
+
+
+// ======================================================
+// ОПЕРАЦИЯ ДЛЯ ПРЯМОУГОЛЬНИКА
+// ======================================================
+//
+// Ctrl       = UNION
+// Alt        = INTERSECTION
+// Ctrl+Alt   = DIFFERENCE
+//
+// Shift используется только для квадрата.
+// ======================================================
+
+function getRectangleOperation(event) {
+
+    if (
+        event.ctrlKey &&
+        event.altKey
+    ) {
+        return 'DIFFERENCE';
+    }
+
+    if (event.altKey) {
+        return 'INTERSECTION';
+    }
+
+    if (event.ctrlKey) {
+        return 'UNION';
+    }
+
+    return 'REPLACE';
+}
+
+
+// ======================================================
+// НАЗВАНИЕ ОПЕРАЦИИ
+// ======================================================
+
+function getOperationName(operation) {
+
+    switch (operation) {
+
+        case 'REPLACE':
+            return 'Новое выделение';
+
+        case 'UNION':
+            return 'Добавление';
+
+        case 'DIFFERENCE':
+            return 'Вычитание';
+
+        case 'INTERSECTION':
+            return 'Пересечение';
+
+        default:
+            return '';
+    }
+}
+
+
+// ======================================================
+// ПРИМЕНЕНИЕ ОПЕРАЦИИ
+// ======================================================
+
+function applyOperation(
+    shape,
+    operation
+) {
+
+    if (
+        shape.length < 3
+    ) {
+        return;
+    }
+
+    const polygon = [
+        toPolygon(shape)
+    ];
+
+
+    // ==================================================
+    // REPLACE
+    // ==================================================
+
+    if (
+        operation === 'REPLACE'
+    ) {
+
+        selection =
+            polygon;
+    }
+
+
+    // ==================================================
+    // ЕСЛИ НЕТ СТАРОГО ВЫДЕЛЕНИЯ
+    // ==================================================
+
+    else if (
+        !selection.length
+    ) {
+
+        selection =
+            polygon;
+    }
+
+
+    // ==================================================
+    // UNION
+    // ==================================================
+
+    else if (
+        operation === 'UNION'
+    ) {
+
+        selection =
+            polygonClipping.union(
+                selection,
+                polygon
+            );
+    }
+
+
+    // ==================================================
+    // DIFFERENCE
+    // ==================================================
+
+    else if (
+        operation === 'DIFFERENCE'
+    ) {
+
+        selection =
+            polygonClipping.difference(
+                selection,
+                polygon
+            );
+    }
+
+
+    // ==================================================
+    // INTERSECTION
+    // ==================================================
+
+    else if (
+        operation === 'INTERSECTION'
+    ) {
+
+        selection =
+            polygonClipping.intersection(
+                selection,
+                polygon
+            );
+    }
+
+
+    saveHistory();
+}
+
+
+// ======================================================
+// СОЗДАНИЕ PATH2D
+// ======================================================
+
+function createPolygonPath(polygon) {
+
+    const path =
+        new Path2D();
+
+    for (
+        const ring of polygon
+    ) {
+
+        if (!ring.length) {
+            continue;
+        }
+
+        path.moveTo(
+            ring[0][0],
+            ring[0][1]
+        );
+
+        for (
+            let i = 1;
+            i < ring.length;
+            i++
+        ) {
+
+            path.lineTo(
+                ring[i][0],
+                ring[i][1]
+            );
+        }
+
+        path.closePath();
+    }
+
+    return path;
+}
+
+
+// ======================================================
+// ТОЧКА В POLYGON
+// ======================================================
+
+function isPointInsidePolygon(
+    x,
+    y,
+    polygon
+) {
+
+    const path =
+        createPolygonPath(
+            polygon
+        );
+
+    return ctx.isPointInPath(
+        path,
+        x,
+        y,
+        'evenodd'
+    );
+}
+
+
+// ======================================================
+// ПОИСК POLYGON
+// ======================================================
+
+function findPolygonAtPoint(
+    x,
+    y
+) {
+
+    for (
+        let i = 0;
+        i < selection.length;
+        i++
+    ) {
+
+        if (
+            isPointInsidePolygon(
+                x,
+                y,
+                selection[i]
+            )
+        ) {
+
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+
+// ======================================================
+// ПЕРЕМЕЩЕНИЕ POLYGON
+// ======================================================
+
+function movePolygon(
+    polygon,
+    dx,
+    dy
+) {
+
+    return polygon.map(
+        ring =>
+            ring.map(
+                point => [
+                    point[0] + dx,
+                    point[1] + dy
+                ]
+            )
+    );
+}
+
+
+// ======================================================
+// ПЕРЕМЕЩЕНИЕ ВСЕГО SELECTION
+// ======================================================
+
+function translateSelection(
+    selection,
+    dx,
+    dy
+) {
+
+    return selection.map(
+        polygon =>
+            movePolygon(
+                polygon,
+                dx,
+                dy
+            )
+    );
+}
+
+
+// ======================================================
+// НАЧАЛО MOVE
+// ======================================================
+
+function startMove(event) {
+
+    if (
+        !selection ||
+        !selection.length
+    ) {
+        return;
+    }
+
+    const point =
+        getMousePosition(event);
+
+    const polygonIndex =
+        findPolygonAtPoint(
+            point.x,
+            point.y
+        );
+
+    if (
+        polygonIndex === -1
+    ) {
+        return;
+    }
+
+    isMoving = true;
+
+    moveStart = {
+        x: point.x,
+        y: point.y
+    };
+
+    moveOffset = {
+        x: 0,
+        y: 0
+    };
+
+    moveStartSelection =
+        cloneSelection(
+            selection
+        );
+
+    if (
+        moveMode === 'ONE'
+    ) {
+
+        movingPolygonIndex =
+            polygonIndex;
+
+    } else {
+
+        movingPolygonIndex = -1;
+    }
+
+    canvas.classList.add(
+        'move-mode'
+    );
+}
+
+
+// ======================================================
+// MOVE
+// ======================================================
+
+function moveSelection(event) {
+
+    if (!isMoving) {
+        return;
+    }
+
+    const point =
+        getMousePosition(event);
+
+    const dx =
+        point.x -
+        moveStart.x;
+
+    const dy =
+        point.y -
+        moveStart.y;
+
+    moveOffset = {
+        x: dx,
+        y: dy
+    };
+
+
+    // ==================================================
+    // ОДНА ОБЛАСТЬ
+    // ==================================================
+
+    if (
+        moveMode === 'ONE' &&
+        movingPolygonIndex !== -1
+    ) {
+
+        selection =
+            cloneSelection(
+                moveStartSelection
+            );
+
+        selection[
+            movingPolygonIndex
+        ] =
+            movePolygon(
+                moveStartSelection[
+                    movingPolygonIndex
+                ],
+                dx,
+                dy
+            );
+
+    }
+
+
+    // ==================================================
+    // ВСЕ ОБЛАСТИ
+    // ==================================================
+
+    else {
+
+        selection =
+            translateSelection(
+                moveStartSelection,
+                dx,
+                dy
+            );
+    }
+
+    redraw();
+}
+
+
+// ======================================================
+// FINISH MOVE
+// ======================================================
+
+function finishMove() {
+
+    if (!isMoving) {
+        return;
+    }
+
+    isMoving = false;
+
+    canvas.classList.remove(
+        'move-mode'
+    );
+
+    if (
+        moveOffset.x !== 0 ||
+        moveOffset.y !== 0
+    ) {
+
+        saveHistory();
+    }
+
+    moveStartSelection = null;
+
+    movingPolygonIndex = -1;
+
+    moveOffset = {
+        x: 0,
+        y: 0
+    };
+
+    redraw();
+}
+
+
+// ======================================================
+// CANCEL MOVE
+// ======================================================
+
+function cancelMove() {
+
+    if (!isMoving) {
+        return;
+    }
+
+    selection =
+        cloneSelection(
+            moveStartSelection
+        );
+
+    isMoving = false;
+
+    moveStartSelection = null;
+
+    movingPolygonIndex = -1;
+
+    moveOffset = {
+        x: 0,
+        y: 0
+    };
+
+    canvas.classList.remove(
+        'move-mode'
+    );
+
+    redraw();
+}
+
+
+// ======================================================
+// DRAW SELECTION
+// ======================================================
+
+function drawPolygon(
+    ctx,
+    polygon
+) {
+
+    if (
+        !polygon ||
+        !polygon.length
+    ) {
+        return;
+    }
+
+    ctx.beginPath();
+
+    for (
+        const polygonPart of polygon
+    ) {
+
+        for (
+            const ring of polygonPart
+        ) {
+
+            if (!ring.length) {
+                continue;
+            }
+
+            ctx.moveTo(
+                ring[0][0],
+                ring[0][1]
+            );
+
+            for (
+                let i = 1;
+                i < ring.length;
+                i++
+            ) {
+
+                ctx.lineTo(
+                    ring[i][0],
+                    ring[i][1]
+                );
+            }
+
+            ctx.closePath();
+        }
+    }
+
+    ctx.fillStyle =
+        'rgba(0, 140, 255, 0.35)';
+
+    ctx.fill('evenodd');
+
+    ctx.strokeStyle =
+        '#0088ff';
+
+    ctx.lineWidth = 2;
+
+    ctx.lineJoin =
+        'miter';
+
+    ctx.lineCap =
+        'butt';
+
+    ctx.stroke();
+}
+
+
+// ======================================================
+// ЧЁТКАЯ ГРАНИЦА
+// ======================================================
+
+function drawSelectionBorder(
+    ctx,
+    polygon
+) {
+
+    if (
+        !polygon ||
+        !polygon.length
+    ) {
+        return;
+    }
+
+    ctx.save();
+
+    ctx.beginPath();
+
+    for (
+        const polygonPart of polygon
+    ) {
+
+        for (
+            const ring of polygonPart
+        ) {
+
+            if (!ring.length) {
+                continue;
+            }
+
+            ctx.moveTo(
+                ring[0][0],
+                ring[0][1]
+            );
+
+            for (
+                let i = 1;
+                i < ring.length;
+                i++
+            ) {
+
+                ctx.lineTo(
+                    ring[i][0],
+                    ring[i][1]
+                );
+            }
+
+            ctx.closePath();
+        }
+    }
+
+    ctx.lineWidth = 1;
+
+    ctx.lineJoin =
+        'miter';
+
+    ctx.lineCap =
+        'butt';
+
+    ctx.setLineDash([
+        4,
+        4
+    ]);
+
+    ctx.lineDashOffset = 0;
+
+    ctx.strokeStyle =
+        '#fff';
+
+    ctx.stroke();
+
+    ctx.lineDashOffset = 4;
+
+    ctx.strokeStyle =
+        '#000';
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
+// ======================================================
+// DRAW LASSO
+// ======================================================
+
+function drawCurrentLasso() {
+
+    if (
+        currentLasso.length < 1
+    ) {
+        return;
+    }
+
+    ctx.save();
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        currentLasso[0].x,
+        currentLasso[0].y
+    );
+
+    for (
+        let i = 1;
+        i < currentLasso.length;
+        i++
+    ) {
+
+        ctx.lineTo(
+            currentLasso[i].x,
+            currentLasso[i].y
+        );
+    }
+
+    ctx.strokeStyle =
+        '#333';
+
+    ctx.lineWidth = 1.5;
+
+    ctx.setLineDash([
+        6,
+        4
+    ]);
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
+// ======================================================
+// DRAW RECTANGLE PREVIEW
+// ======================================================
+
+function drawCurrentRectangle() {
+
+    if (
+        !currentRectangle
+    ) {
+        return;
+    }
+
+    const x =
+        currentRectangle.x;
+
+    const y =
+        currentRectangle.y;
+
+    const width =
+        currentRectangle.width;
+
+    const height =
+        currentRectangle.height;
+
+
+    ctx.save();
+
+    ctx.beginPath();
+
+    ctx.rect(
+        x,
+        y,
+        width,
+        height
+    );
+
+    ctx.fillStyle =
+        'rgba(0, 140, 255, 0.15)';
+
+    ctx.fill();
+
+    ctx.strokeStyle =
+        '#333';
+
+    ctx.lineWidth = 1.5;
+
+    ctx.setLineDash([
+        6,
+        4
+    ]);
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
+// ======================================================
+// REDRAW
+// ======================================================
+
+function redraw() {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    drawPolygon(
+        ctx,
+        selection
+    );
+
+    drawSelectionBorder(
+        ctx,
+        selection
+    );
+
+    drawCurrentLasso();
+
+    drawCurrentRectangle();
+}
+
+
+// ======================================================
+// СОЗДАНИЕ ПРЯМОУГОЛЬНИКА
+// ======================================================
+
+function createRectangleShape(
+    start,
+    end,
+    forceSquare = false
+) {
+
+    let dx =
+        end.x -
+        start.x;
+
+    let dy =
+        end.y -
+        start.y;
+
+
+    // ==================================================
+    // КВАДРАТ
+    // ==================================================
+    //
+    // Размер берём по большей стороне.
+    //
+    // Это позволяет вести мышь в любом направлении.
+    // ==================================================
+
+    if (forceSquare) {
+
+        const size =
+            Math.max(
+                Math.abs(dx),
+                Math.abs(dy)
+            );
+
+        dx =
+            dx < 0
+                ? -size
+                : size;
+
+        dy =
+            dy < 0
+                ? -size
+                : size;
+    }
+
+
+    const x2 =
+        start.x + dx;
+
+    const y2 =
+        start.y + dy;
+
+
+    const x1 =
+        Math.min(
+            start.x,
+            x2
+        );
+
+    const y1 =
+        Math.min(
+            start.y,
+            y2
+        );
+
+    const right =
+        Math.max(
+            start.x,
+            x2
+        );
+
+    const bottom =
+        Math.max(
+            start.y,
+            y2
+        );
+
+
+    return [
+
+        {
+            x: x1,
+            y: y1
+        },
+
+        {
+            x: right,
+            y: y1
+        },
+
+        {
+            x: right,
+            y: bottom
+        },
+
+        {
+            x: x1,
+            y: bottom
+        }
+
+    ];
+}
+
+
+// ======================================================
+// СОЗДАНИЕ ПРЯМОУГОЛЬНИКА ДЛЯ PREVIEW
+// ======================================================
+
+function createRectanglePreview(
+    start,
+    end,
+    forceSquare
+) {
+
+    const shape =
+        createRectangleShape(
+            start,
+            end,
+            forceSquare
+        );
+
+
+    const x =
+        shape[0].x;
+
+    const y =
+        shape[0].y;
+
+    const right =
+        shape[2].x;
+
+    const bottom =
+        shape[2].y;
+
+
+    return {
+
+        x,
+        y,
+
+        width:
+            right - x,
+
+        height:
+            bottom - y
+    };
+}
+
+
+// ======================================================
+// MOUSEDOWN
+// ======================================================
+
+canvas.addEventListener(
+    'mousedown',
+    function(event) {
+
+        if (
+            event.button !== 0
+        ) {
+            return;
+        }
+
+
+        // ==================================================
+        // MOVE
+        // ==================================================
+
+        if (
+            tool === 'MOVE'
+        ) {
+
+            startMove(event);
+
+            return;
+        }
+
+
+        // ==================================================
+        // START DRAWING
+        // ==================================================
+
+        isDrawing = true;
+
+
+        const point =
+            getMousePosition(event);
+
+
+        // ==================================================
+        // LASSO
+        // ==================================================
+
+        if (
+            tool === 'LASSO'
+        ) {
+
+            currentLasso = [];
+
+            currentLasso.push(
+                point
+            );
+
+            return;
+        }
+
+
+        // ==================================================
+        // RECTANGLE
+        // ==================================================
+
+        if (
+            tool === 'RECTANGLE'
+        ) {
+
+            rectangleStart = {
+                x: point.x,
+                y: point.y
+            };
+
+
+            currentRectangle =
+                createRectanglePreview(
+                    rectangleStart,
+                    point,
+                    event.shiftKey
+                );
+
+
+            redraw();
+        }
+
+    }
+);
+
+
+// ======================================================
+// MOUSEMOVE
+// ======================================================
+
+canvas.addEventListener(
+    'mousemove',
+    function(event) {
+
+
+        // ==================================================
+        // MOVE
+        // ==================================================
+
+        if (isMoving) {
+
+            moveSelection(event);
+
+            return;
+        }
+
+
+        if (!isDrawing) {
+            return;
+        }
+
+
+        const point =
+            getMousePosition(event);
+
+
+        // ==================================================
+        // LASSO
+        // ==================================================
+
+        if (
+            tool === 'LASSO'
+        ) {
+
+            currentLasso.push(
+                point
+            );
+
+            redraw();
+
+            return;
+        }
+
+
+        // ==================================================
+        // RECTANGLE
+        // ==================================================
+
+        if (
+            tool === 'RECTANGLE'
+        ) {
+
+            // Shift удерживается →
+            // квадрат
+
+            const forceSquare =
+                event.shiftKey;
+
+
+            currentRectangle =
+                createRectanglePreview(
+                    rectangleStart,
+                    point,
+                    forceSquare
+                );
+
+
+            redraw();
+        }
+
+    }
+);
+
+
+// ======================================================
+// MOUSEUP
+// ======================================================
+
+canvas.addEventListener(
+    'mouseup',
+    function(event) {
+
+
+        // ==================================================
+        // MOVE
+        // ==================================================
+
+        if (isMoving) {
+
+            finishMove();
+
+            return;
+        }
+
+
+        if (!isDrawing) {
+            return;
+        }
+
+
+        isDrawing = false;
+
+
+        const point =
+            getMousePosition(event);
+
+
+        // ==================================================
+        // LASSO
+        // ==================================================
+
+        if (
+            tool === 'LASSO'
+        ) {
+
+            if (
+                currentLasso.length >= 3
+            ) {
+
+                const operation =
+                    getOperation(event);
+
+
+                applyOperation(
+                    currentLasso,
+                    operation
+                );
+            }
+
+
+            currentLasso = [];
+
+            redraw();
+
+            return;
+        }
+
+
+        // ==================================================
+        // RECTANGLE
+        // ==================================================
+
+        if (
+            tool === 'RECTANGLE'
+        ) {
+
+
+            // ==================================================
+            // SHIFT = КВАДРАТ
+            // ==================================================
+
+            const forceSquare =
+                event.shiftKey;
+
+
+            const shape =
+                createRectangleShape(
+                    rectangleStart,
+                    point,
+                    forceSquare
+                );
+
+
+            const width =
+                Math.abs(
+                    shape[2].x -
+                    shape[0].x
+                );
+
+
+            const height =
+                Math.abs(
+                    shape[2].y -
+                    shape[0].y
+                );
+
+
+            if (
+                width >= 2 &&
+                height >= 2
+            ) {
+
+
+                // ==================================================
+                // Для прямоугольника:
+                //
+                // Ctrl       = добавить
+                // Alt        = пересечь
+                // Ctrl+Alt   = вычесть
+                // ==================================================
+
+                const operation =
+                    getRectangleOperation(
+                        event
+                    );
+
+
+                applyOperation(
+                    shape,
+                    operation
+                );
+            }
+
+
+            currentRectangle = null;
+
+
+            redraw();
+        }
+
+    }
+);
+
+
+// ======================================================
+// KEYBOARD
+// ======================================================
+
+document.addEventListener(
+    'keydown',
+    function(event) {
+
+        const key =
+            event.key.toLowerCase();
+
+
+        // ==================================================
+        // ESC
+        // ==================================================
+
+        if (
+            key === 'escape'
+        ) {
+
+            if (isMoving) {
+
+                cancelMove();
+
+                return;
+            }
+
+
+            if (isDrawing) {
+
+                isDrawing = false;
+
+                currentLasso = [];
+
+                currentRectangle = null;
+
+                redraw();
+
+                return;
+            }
+        }
+
+
+        // ==================================================
+        // L — LASSO
+        // ==================================================
+
+        if (
+            !event.ctrlKey &&
+            !event.altKey &&
+            !event.shiftKey &&
+            key === 'l'
+        ) {
+
+            setTool('LASSO');
+
+            return;
+        }
+
+
+        // ==================================================
+        // R — RECTANGLE
+        // ==================================================
+
+        if (
+            !event.ctrlKey &&
+            !event.altKey &&
+            !event.shiftKey &&
+            key === 'r'
+        ) {
+
+            setTool('RECTANGLE');
+
+            return;
+        }
+
+
+        // ==================================================
+        // M — MOVE
+        // ==================================================
+
+        if (
+            !event.ctrlKey &&
+            !event.altKey &&
+            !event.shiftKey &&
+            key === 'm'
+        ) {
+
+            setTool('MOVE');
+
+            return;
+        }
+
+
+        // ==================================================
+        // CTRL + SHIFT + Z
+        // ==================================================
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            key === 'z'
+        ) {
+
+            event.preventDefault();
+
+            redo();
+
+            return;
+        }
+
+
+        // ==================================================
+        // CTRL + Z
+        // ==================================================
+
+        if (
+            event.ctrlKey &&
+            !event.shiftKey &&
+            key === 'z'
+        ) {
+
+            event.preventDefault();
+
+            undo();
+
+            return;
+        }
+
+
+        // ==================================================
+        // CTRL + Y
+        // ==================================================
+
+        if (
+            event.ctrlKey &&
+            key === 'y'
+        ) {
+
+            event.preventDefault();
+
+            redo();
+
+            return;
+        }
+
+    }
+);
+
+
+// ======================================================
+// SET TOOL
+// ======================================================
+
+function setTool(newTool) {
+
+    tool = newTool;
+
+
+    // ==================================================
+    // LASSO
+    // ==================================================
+
+    if (
+        tool === 'LASSO'
+    ) {
+
+        modeElement.textContent =
+            'Инструмент: Лассо';
+
+
+        lassoButton.classList.add(
+            'active'
+        );
+
+        rectangleButton.classList.remove(
+            'active'
+        );
+
+        moveButton.classList.remove(
+            'active'
+        );
+
+        canvas.classList.remove(
+            'move-mode'
+        );
+    }
+
+
+    // ==================================================
+    // RECTANGLE
+    // ==================================================
+
+    else if (
+        tool === 'RECTANGLE'
+    ) {
+
+        modeElement.textContent =
+            'Инструмент: Прямоугольник — Shift = квадрат';
+
+
+        lassoButton.classList.remove(
+            'active'
+        );
+
+        rectangleButton.classList.add(
+            'active'
+        );
+
+        moveButton.classList.remove(
+            'active'
+        );
+
+        canvas.classList.remove(
+            'move-mode'
+        );
+    }
+
+
+    // ==================================================
+    // MOVE
+    // ==================================================
+
+    else if (
+        tool === 'MOVE'
+    ) {
+
+        modeElement.textContent =
+
+            'Инструмент: Перемещение — ' +
+
+            (
+                moveMode === 'ALL'
+                    ? 'все'
+                    : 'одно'
+            );
+
+
+        lassoButton.classList.remove(
+            'active'
+        );
+
+        rectangleButton.classList.remove(
+            'active'
+        );
+
+        moveButton.classList.add(
+            'active'
+        );
+
+        canvas.classList.add(
+            'move-mode'
+        );
+    }
+
+}
+
+
+// ======================================================
+// TOGGLE MOVE MODE
+// ======================================================
+
+function toggleMoveMode() {
+
+    if (
+        moveMode === 'ALL'
+    ) {
+
+        moveMode = 'ONE';
+
+        moveModeButton.textContent =
+            'Перемещать: одно';
+
+    } else {
+
+        moveMode = 'ALL';
+
+        moveModeButton.textContent =
+            'Перемещать: все';
+    }
+
+
+    if (
+        tool === 'MOVE'
+    ) {
+
+        modeElement.textContent =
+
+            'Инструмент: Перемещение — ' +
+
+            (
+                moveMode === 'ALL'
+                    ? 'все'
+                    : 'одно'
+            );
+    }
+}
+
+
+// ======================================================
+// BUTTONS
+// ======================================================
+
+lassoButton.addEventListener(
+    'click',
+    function() {
+        setTool('LASSO');
+    }
+);
+
+
+rectangleButton.addEventListener(
+    'click',
+    function() {
+        setTool('RECTANGLE');
+    }
+);
+
+
+moveButton.addEventListener(
+    'click',
+    function() {
+        setTool('MOVE');
+    }
+);
+
+
+moveModeButton.addEventListener(
+    'click',
+    function() {
+        toggleMoveMode();
+    }
+);
+
+
+undoButton.addEventListener(
+    'click',
+    function() {
+        undo();
+    }
+);
+
+
+redoButton.addEventListener(
+    'click',
+    function() {
+        redo();
+    }
+);
+
+
+clearButton.addEventListener(
+    'click',
+    function() {
+
+        if (
+            !selection.length
+        ) {
+            return;
+        }
+
+        selection = [];
+
+        saveHistory();
+
+        redraw();
+    }
+);
+
+
+// ======================================================
+// START
+// ======================================================
+
+resetHistory();
+
+setTool('LASSO');
+
+redraw();
+
+</script>
+
+</body>
+</html>
+```
