@@ -438,6 +438,11 @@ function resetHistory() {
 
 function getSelectionBounds(polygon) {
 
+    // Проверка на пустой полигон
+    if (!polygon || polygon.length === 0) {
+        return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
     let minX = Infinity;
     let minY = Infinity;
 
@@ -460,6 +465,12 @@ function getSelectionBounds(polygon) {
 
         }
 
+    }
+
+    // Если координаты не были установлены
+    if (minX === Infinity || minY === Infinity || 
+        maxX === -Infinity || maxY === -Infinity) {
+        return { x: 0, y: 0, width: 0, height: 0 };
     }
 
     return {
@@ -588,12 +599,24 @@ function extractPixels(
     bounds
 ){
 
+    // Проверка на валидность bounds
+    if (!bounds || 
+        bounds.width <= 0 || 
+        bounds.height <= 0 ||
+        isNaN(bounds.x) || 
+        isNaN(bounds.y) ||
+        isNaN(bounds.width) || 
+        isNaN(bounds.height)
+    ) {
+        return [];
+    }
+
     const image =
         ctx.getImageData(
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height
+            Math.floor(bounds.x),
+            Math.floor(bounds.y),
+            Math.floor(bounds.width),
+            Math.floor(bounds.height)
         );
 
 
@@ -676,6 +699,17 @@ function updateSelection(
             getSelectionBounds(
                 polygon
             );
+
+        // Проверка на некорректный bounds
+        if (!selection.bounds || 
+            selection.bounds.width <= 0 || 
+            selection.bounds.height <= 0) {
+            
+            selection.mask = null;
+            selection.pixels = null;
+            selection.bounds = null;
+            return;
+        }
 
         selection.mask =
             createSelectionMask(
