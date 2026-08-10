@@ -1509,6 +1509,68 @@
     </div>
 </div>
 
+<!-- Модальное окно с radio button и полями ввода -->
+<div class="modal" id="radioOptionsModal">
+    <div class="modal-content" style="width: 450px;">
+        <div class="modal-title">
+            <span>Настройки опций</span>
+            <button onclick="closeRadioOptionsModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-row">
+                <!-- Первая опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option1" onchange="handleOptionChange('option1')">
+                    <span>Опция 1 - Текстовое поле</span>
+                </label>
+                <div id="option1-container" class="option-field-container" style="display: none;">
+                    <input type="text" id="option1-input" class="modal-input" placeholder="Введите текст">
+                </div>
+
+                <!-- Вторая опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option2" onchange="handleOptionChange('option2')">
+                    <span>Опция 2 - Числовое поле</span>
+                </label>
+                <div id="option2-container" class="option-field-container" style="display: none;">
+                    <input type="number" id="option2-input" class="modal-input" placeholder="Введите число" min="0" max="100">
+                </div>
+
+                <!-- Третья опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option3" onchange="handleOptionChange('option3')">
+                    <span>Опция 3 - Дополнительный выбор</span>
+                </label>
+                <div id="option3-container" class="option-field-container" style="display: none;">
+                    <select id="option3-select" class="modal-select">
+                        <option value="">Выберите значение</option>
+                        <option value="val1">Значение 1</option>
+                        <option value="val2">Значение 2</option>
+                        <option value="val3">Значение 3</option>
+                    </select>
+                </div>
+
+                <!-- Четвертая опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option4" onchange="handleOptionChange('option4')">
+                    <span>Опция 4 - Диапазон чисел</span>
+                </label>
+                <div id="option4-container" class="option-field-container" style="display: none;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="option4-from" class="modal-input" placeholder="От" style="flex: 1;">
+                        <span>до</span>
+                        <input type="number" id="option4-to" class="modal-input" placeholder="До" style="flex: 1;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-btn primary" onclick="applyRadioOptions()">Применить</button>
+            <button class="modal-btn" onclick="closeRadioOptionsModal()">Отмена</button>
+        </div>
+        <div class="modal-resize-handle"></div>
+    </div>
+</div>
 
 
 <script src="src/globals/globals.js"></script>
