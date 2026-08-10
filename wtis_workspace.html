@@ -56,6 +56,7 @@
         <symbol id="lasso"                  viewBox="0 0 24 24"><path d="M3.704 14.467A10 8 0 0 1 2 10a10 8 0 0 1 20 0 10 8 0 0 1-10 8 10 8 0 0 1-5.181-1.158" /><path d="M7 22a5 5 0 0 1-2-3.994" /><circle cx="5" cy="16" r="2" /></symbol>
         <symbol id="moon"                   viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
         <symbol id="life-buoy"              viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="m4.93 4.93 4.24 4.24" /><path d="m14.83 9.17 4.24-4.24" /><path d="m14.83 14.83 4.24 4.24" /><path d="m9.17 14.83-4.24 4.24" /><circle cx="12" cy="12" r="4" /></symbol>
+        <symbol id="settings"               viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
         <symbol id="cloud-download"         viewBox="0 0 24 24"><path d="M12 13v8l-4-4" /><path d="m12 21 4-4" /><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284" /></symbol>
         <symbol id="cloud-upload"           viewBox="0 0 24 24"><path d="M12 13v8" /><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" /><path d="m8 17 4-4 4 4" /></symbol>
   
@@ -618,8 +619,13 @@
                                 <use href="#life-buoy"/>
                             </svg>  
                         </button>
+                        <button class="tab-action-btn" onclick="showSettingsModal()" title="Открыть настройки параметров">
+                            <svg style="fill:none; stroke:var(--text-primary); stroke-width:2;">
+                                <use href="#settings"/>
+                            </svg>  
+                        </button>
                     </div>
-                    <h4>Меню</h4>
+                    <h4>Меню и Настройки</h4>
                 </div>
             </div>
         </div>
@@ -1150,6 +1156,148 @@
                 <button class="modal-btn danger" id="progressCancelBtn">Отмена</button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Модальное окно с radio button и полями ввода -->
+<div class="modal" id="settingsModal">
+    <div class="modal-content" style="width: 500px; min-width: 400px; min-height: 350px;">
+        <div class="modal-title">
+            <span>Настройки параметров</span>
+            <button onclick="closeSettingsModal()">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+            
+            <!-- Секция с radio button -->
+            <div style="background: #f8f9fa; padding: 16px; border-radius: 8px;">
+                <h4 style="margin: 0 0 12px 0; color: #333;">Выберите режим работы:</h4>
+                
+                <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer;">
+                    <input type="radio" name="modeRadio" value="manual" checked onchange="onModeChange('manual')">
+                    <span>Ручной режим</span>
+                </label>
+                
+                <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; cursor: pointer;">
+                    <input type="radio" name="modeRadio" value="auto" onchange="onModeChange('auto')">
+                    <span>Автоматический режим</span>
+                </label>
+                
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="radio" name="modeRadio" value="custom" onchange="onModeChange('custom')">
+                    <span>Пользовательский режим</span>
+                </label>
+            </div>
+
+            <!-- Поля для ручного режима -->
+            <div id="manualFields" class="mode-fields" style="background: #e3f2fd; padding: 16px; border-radius: 8px; border-left: 4px solid #2196F3;">
+                <h5 style="margin: 0 0 12px 0; color: #1976D2;">Параметры ручного режима</h5>
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+                        <input type="radio" name="manualSubRadio" value="fixed" checked onchange="onManualSubChange('fixed')" style="margin-right: 8px;">
+                        Фиксированное значение
+                    </label>
+                    <input type="number" id="manualFixedValue" value="50" min="0" max="100" step="1" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                           placeholder="Введите число">
+                </div>
+                
+                <div>
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+                        <input type="radio" name="manualSubRadio" value="range" onchange="onManualSubChange('range')" style="margin-right: 8px;">
+                        Диапазон значений
+                    </label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="manualRangeMin" value="10" min="0" max="100" step="1" 
+                               disabled style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                               placeholder="Мин">
+                        <input type="number" id="manualRangeMax" value="90" min="0" max="100" step="1" 
+                               disabled style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                               placeholder="Макс">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Поля для автоматического режима -->
+            <div id="autoFields" class="mode-fields" style="background: #e8f5e9; padding: 16px; border-radius: 8px; border-left: 4px solid #4CAF50; display: none;">
+                <h5 style="margin: 0 0 12px 0; color: #388E3C;">Параметры автоматического режима</h5>
+                
+                <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+                    <input type="radio" name="autoSubRadio" value="quick" checked onchange="onAutoSubChange('quick')" style="margin-right: 8px;">
+                    Быстрая обработка
+                </label>
+                <div style="margin-bottom: 12px; padding-left: 24px;">
+                    <input type="number" id="autoQuickValue" value="100" min="1" max="1000" step="10" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                           placeholder="Скорость обработки">
+                </div>
+                
+                <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+                    <input type="radio" name="autoSubRadio" value="precise" onchange="onAutoSubChange('precise')" style="margin-right: 8px;">
+                    Точная обработка
+                </label>
+                <div style="padding-left: 24px;">
+                    <input type="number" id="autoPreciseValue" value="500" min="1" max="5000" step="50" 
+                           disabled style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                           placeholder="Точность">
+                </div>
+            </div>
+
+            <!-- Поля для пользовательского режима с ползунком -->
+            <div id="customFields" class="mode-fields" style="background: #fff3e0; padding: 16px; border-radius: 8px; border-left: 4px solid #FF9800; display: none;">
+                <h5 style="margin: 0 0 12px 0; color: #F57C00;">Пользовательские настройки</h5>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+                        <input type="radio" name="customSubRadio" value="threshold" checked onchange="onCustomSubChange('threshold')" style="margin-right: 8px;">
+                        Пороговое значение
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                        <input type="range" id="thresholdSlider" min="0" max="100" value="50" step="1" 
+                               style="flex: 1; height: 6px;" 
+                               oninput="updateSliderValue('thresholdSlider', 'thresholdValueDisplay')">
+                        <input type="number" id="thresholdValue" value="50" min="0" max="100" step="1" 
+                               style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"
+                               onchange="updateSliderFromNumber('thresholdSlider', this.value)">
+                        <span id="thresholdValueDisplay" style="min-width: 40px; text-align: center; font-weight: bold;">50</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="display: block; margin-bottom: 6px; font-weight: 500;">
+                        <input type="radio" name="customSubRadio" value="sensitivity" onchange="onCustomSubChange('sensitivity')" style="margin-right: 8px;">
+                        Чувствительность (ползунок)
+                    </label>
+                    <div style="padding-left: 24px; margin-top: 8px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <input type="range" id="sensitivitySlider" min="1" max="10" value="5" step="1" 
+                                   disabled style="flex: 1; height: 6px;" 
+                                   oninput="updateSliderValue('sensitivitySlider', 'sensitivityValueDisplay')">
+                            <input type="number" id="sensitivityValue" value="5" min="1" max="10" step="1" 
+                                   disabled style="width: 60px; padding: 6px; border: 1px solid #ddd; border-radius: 4px;"
+                                   onchange="updateSliderFromNumber('sensitivitySlider', this.value)">
+                            <span id="sensitivityValueDisplay" style="min-width: 30px; text-align: center; font-weight: bold;">5</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: #666;">
+                            <span>Мин</span>
+                            <span>Макс</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-buttons" style="padding: 12px 16px; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="modal-btn primary" onclick="saveSettings()">Сохранить</button>
+            <button class="modal-btn" onclick="closeSettingsModal()">Закрыть</button>
+        </div>
+        <div class="modal-resize-handle"></div>
+    </div>
+</div>
+
+
+            </div>
+        </div>
         <div class="modal-resize-handle"></div>
     </div>
 </div>
@@ -1509,6 +1657,68 @@
     </div>
 </div>
 
+<!-- Модальное окно с radio button и полями ввода -->
+<div class="modal" id="radioOptionsModal">
+    <div class="modal-content" style="width: 450px;">
+        <div class="modal-title">
+            <span>Настройки опций</span>
+            <button onclick="closeRadioOptionsModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-row">
+                <!-- Первая опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option1" onchange="handleOptionChange('option1')">
+                    <span>Опция 1 - Текстовое поле</span>
+                </label>
+                <div id="option1-container" class="option-field-container" style="display: none;">
+                    <input type="text" id="option1-input" class="modal-input" placeholder="Введите текст">
+                </div>
+
+                <!-- Вторая опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option2" onchange="handleOptionChange('option2')">
+                    <span>Опция 2 - Числовое поле</span>
+                </label>
+                <div id="option2-container" class="option-field-container" style="display: none;">
+                    <input type="number" id="option2-input" class="modal-input" placeholder="Введите число" min="0" max="100">
+                </div>
+
+                <!-- Третья опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option3" onchange="handleOptionChange('option3')">
+                    <span>Опция 3 - Дополнительный выбор</span>
+                </label>
+                <div id="option3-container" class="option-field-container" style="display: none;">
+                    <select id="option3-select" class="modal-select">
+                        <option value="">Выберите значение</option>
+                        <option value="val1">Значение 1</option>
+                        <option value="val2">Значение 2</option>
+                        <option value="val3">Значение 3</option>
+                    </select>
+                </div>
+
+                <!-- Четвертая опция -->
+                <label class="radio-option">
+                    <input type="radio" name="optionGroup" value="option4" onchange="handleOptionChange('option4')">
+                    <span>Опция 4 - Диапазон чисел</span>
+                </label>
+                <div id="option4-container" class="option-field-container" style="display: none;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="option4-from" class="modal-input" placeholder="От" style="flex: 1;">
+                        <span>до</span>
+                        <input type="number" id="option4-to" class="modal-input" placeholder="До" style="flex: 1;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-btn primary" onclick="applyRadioOptions()">Применить</button>
+            <button class="modal-btn" onclick="closeRadioOptionsModal()">Отмена</button>
+        </div>
+        <div class="modal-resize-handle"></div>
+    </div>
+</div>
 
 
 <script src="src/globals/globals.js"></script>
@@ -1540,6 +1750,153 @@
         // console.log('Скачать цель worflow: http://dev.wtis.wfront.svk.sils.local/purpose.png');
         console.log('Скачать логи: http://dev.wtis.wfront.svk.sils.local/logs/requests.log');
         console.log('Скачать логи: http://dev.wtis.wfront.svk.sils.local/logs/app.log');
+        
+        // ====================== ФУНКЦИИ ДЛЯ МОДАЛЬНОГО ОКНА НАСТРОЕК ======================
+        
+        // Показать окно настроек
+        window.showSettingsModal = function() {
+            const modal = document.getElementById('settingsModal');
+            if (modal) {
+                modal.classList.add('active');
+                onModeChange('manual'); // Инициализация состояния
+            }
+        };
+        
+        // Закрыть окно настроек
+        window.closeSettingsModal = function() {
+            const modal = document.getElementById('settingsModal');
+            if (modal) modal.classList.remove('active');
+        };
+        
+        // Переключение основного режима
+        window.onModeChange = function(mode) {
+            // Скрываем все поля
+            document.getElementById('manualFields').style.display = 'none';
+            document.getElementById('autoFields').style.display = 'none';
+            document.getElementById('customFields').style.display = 'none';
+            
+            // Показываем нужные
+            if (mode === 'manual') {
+                document.getElementById('manualFields').style.display = 'block';
+                onManualSubChange('fixed');
+            } else if (mode === 'auto') {
+                document.getElementById('autoFields').style.display = 'block';
+                onAutoSubChange('quick');
+            } else if (mode === 'custom') {
+                document.getElementById('customFields').style.display = 'block';
+                onCustomSubChange('threshold');
+            }
+        };
+        
+        // Переключение под-режима ручного режима
+        window.onManualSubChange = function(subMode) {
+            const rangeMin = document.getElementById('manualRangeMin');
+            const rangeMax = document.getElementById('manualRangeMax');
+            
+            if (subMode === 'fixed') {
+                rangeMin.disabled = true;
+                rangeMax.disabled = true;
+            } else if (subMode === 'range') {
+                rangeMin.disabled = false;
+                rangeMax.disabled = false;
+            }
+        };
+        
+        // Переключение под-режима автоматического режима
+        window.onAutoSubChange = function(subMode) {
+            const preciseValue = document.getElementById('autoPreciseValue');
+            
+            if (subMode === 'quick') {
+                preciseValue.disabled = true;
+            } else if (subMode === 'precise') {
+                preciseValue.disabled = false;
+            }
+        };
+        
+        // Переключение под-режима пользовательского режима
+        window.onCustomSubChange = function(subMode) {
+            const sensitivitySlider = document.getElementById('sensitivitySlider');
+            const sensitivityValue = document.getElementById('sensitivityValue');
+            const sensitivityDisplay = document.getElementById('sensitivityValueDisplay');
+            
+            if (subMode === 'threshold') {
+                sensitivitySlider.disabled = true;
+                sensitivityValue.disabled = true;
+                sensitivityDisplay.style.opacity = '0.5';
+            } else if (subMode === 'sensitivity') {
+                sensitivitySlider.disabled = false;
+                sensitivityValue.disabled = false;
+                sensitivityDisplay.style.opacity = '1';
+            }
+        };
+        
+        // Обновление отображения значения ползунка
+        window.updateSliderValue = function(sliderId, displayId) {
+            const slider = document.getElementById(sliderId);
+            const display = document.getElementById(displayId);
+            const numberInput = sliderId.replace('Slider', 'Value');
+            const numberField = document.getElementById(numberInput);
+            
+            if (slider && display) {
+                display.textContent = slider.value;
+            }
+            if (numberField) {
+                numberField.value = slider.value;
+            }
+        };
+        
+        // Обновление ползунка из числового поля
+        window.updateSliderFromNumber = function(sliderId, value) {
+            const slider = document.getElementById(sliderId);
+            const numValue = parseInt(value) || 0;
+            
+            if (slider) {
+                const min = parseInt(slider.min) || 0;
+                const max = parseInt(slider.max) || 100;
+                const clampedValue = Math.max(min, Math.min(numValue, max));
+                slider.value = clampedValue;
+                
+                // Обновляем отображение
+                const displayId = sliderId.replace('Slider', 'ValueDisplay');
+                const display = document.getElementById(displayId);
+                if (display) {
+                    display.textContent = clampedValue;
+                }
+            }
+        };
+        
+        // Сохранение настроек
+        window.saveSettings = function() {
+            const mode = document.querySelector('input[name="modeRadio"]:checked')?.value;
+            const settings = {
+                mode: mode,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Собираем данные в зависимости от режима
+            if (mode === 'manual') {
+                const subMode = document.querySelector('input[name="manualSubRadio"]:checked')?.value;
+                settings.manualSubMode = subMode;
+                settings.manualFixedValue = document.getElementById('manualFixedValue')?.value;
+                settings.manualRangeMin = document.getElementById('manualRangeMin')?.value;
+                settings.manualRangeMax = document.getElementById('manualRangeMax')?.value;
+            } else if (mode === 'auto') {
+                const subMode = document.querySelector('input[name="autoSubRadio"]:checked')?.value;
+                settings.autoSubMode = subMode;
+                settings.autoQuickValue = document.getElementById('autoQuickValue')?.value;
+                settings.autoPreciseValue = document.getElementById('autoPreciseValue')?.value;
+            } else if (mode === 'custom') {
+                const subMode = document.querySelector('input[name="customSubRadio"]:checked')?.value;
+                settings.customSubMode = subMode;
+                settings.thresholdValue = document.getElementById('thresholdValue')?.value;
+                settings.sensitivityValue = document.getElementById('sensitivityValue')?.value;
+            }
+            
+            console.log('💾 Сохранённые настройки:', settings);
+            alert('Настройки сохранены! Проверьте консоль для просмотра данных.');
+            closeSettingsModal();
+        };
+        
     </script>
 </body>
 </html>

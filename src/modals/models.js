@@ -548,4 +548,70 @@
 
     console.log('✅ История изменений загружена (showHistoryModal глобальная)');
 
-})();
+
+    // ====================== МОДАЛЬНОЕ ОКНО С RADIO BUTTON ======================
+
+    // Показать окно с radio button опциями
+    window.showRadioOptionsModal = function() {
+        const modal = document.getElementById('radioOptionsModal');
+        if (!modal) return console.error('radioOptionsModal не найден');
+        modal.classList.add('active');
+    };
+
+    // Закрыть окно с radio button опциями
+    window.closeRadioOptionsModal = function() {
+        const modal = document.getElementById('radioOptionsModal');
+        if (modal) modal.classList.remove('active');
+    };
+
+    // Обработка переключения radio button
+    window.handleOptionChange = function(optionName) {
+        // Скрываем все поля
+        const containers = document.querySelectorAll('.option-field-container');
+        containers.forEach(container => {
+            container.style.display = 'none';
+        });
+
+        // Показываем только поле выбранной опции
+        const selectedContainer = document.getElementById(optionName + '-container');
+        if (selectedContainer) {
+            selectedContainer.style.display = 'block';
+        }
+    };
+
+    // Применение выбранных опций
+    window.applyRadioOptions = function() {
+        const selectedOption = document.querySelector('input[name="optionGroup"]:checked');
+        if (!selectedOption) {
+            alert('Выберите опцию');
+            return;
+        }
+
+        const optionValue = selectedOption.value;
+        let result = { option: optionValue };
+
+        // Собираем данные в зависимости от выбранной опции
+        switch(optionValue) {
+            case 'option1':
+                result.text = document.getElementById('option1-input').value;
+                break;
+            case 'option2':
+                result.number = document.getElementById('option2-input').value;
+                break;
+            case 'option3':
+                result.selectValue = document.getElementById('option3-select').value;
+                break;
+            case 'option4':
+                result.from = document.getElementById('option4-from').value;
+                result.to = document.getElementById('option4-to').value;
+                break;
+        }
+
+        console.log('Применены настройки:', result);
+        alert('Настройки применены: ' + JSON.stringify(result, null, 2));
+        closeRadioOptionsModal();
+    };
+
+    console.log('✅ Функции модального окна с radio button добавлены');
+
+})(); 

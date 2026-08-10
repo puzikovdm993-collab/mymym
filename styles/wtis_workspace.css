@@ -3184,11 +3184,44 @@ body:not(.light-theme) .tour-highlighted  {
 
 /* #endregion */
 
+/* Стили для модального окна с radio button */
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
 
+.radio-option:hover {
+    background: var(--background-tertiary);
+    border-radius: 4px;
+    padding-left: 8px;
+    margin-left: -8px;
+}
 
+.radio-option input[type="radio"] {
+    cursor: pointer;
+    accent-color: var(--primary-color);
+}
 
+.option-field-container {
+    padding: 8px 0 8px 24px;
+    animation: fadeIn 0.2s ease-in-out;
+}
 
-
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
 
 
