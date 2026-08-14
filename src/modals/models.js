@@ -34,6 +34,10 @@ const Modal = {
         // Закрытие по клику на оверлей (проверяется в open)
         this.overlay.addEventListener('click', (e) => {
             if (e.target === this.overlay && this.currentConfig?.closeOnOverlayClick !== false) {
+                // Если backdrop === 'static', закрытие по клику на оверлей запрещено
+                if (this.currentConfig?.backdrop === 'static') {
+                    return;
+                }
                 this.close();
             }
         });
@@ -232,6 +236,19 @@ const Modal = {
 
     /**
      * Открытие модального окна
+     * @param {Object} options - Настройки модального окна
+     * @param {string} [options.title=''] - Заголовок модального окна
+     * @param {string} [options.content=''] - HTML содержимое тела модального окна
+     * @param {Array} [options.buttons=[]] - Массив кнопок для футера
+     * @param {Function} [options.onClose=null] - Callback функция при закрытии
+     * @param {number} [options.minWidth=300] - Минимальная ширина в пикселях
+     * @param {number} [options.minHeight=200] - Минимальная высота в пикселях
+     * @param {Array} [options.requiredFields=[]] - Массив обязательных полей для валидации
+     * @param {boolean} [options.closeOnOverlayClick=true] - Закрывать ли при клике на оверлей
+     * @param {boolean|string} [options.backdrop=true] - Настройка затемнения фона:
+     *   - true (по умолчанию): стандартное затемнение с возможностью закрытия по клику
+     *   - 'static': усиленное затемнение, закрытие по клику на оверлей запрещено
+     *   - false: без затемнения, клики проходят сквозь оверлей
      */
     open(options = {}) {
         const {
@@ -242,7 +259,8 @@ const Modal = {
             minWidth = 300,
             minHeight = 200,
             requiredFields = [],
-            closeOnOverlayClick = true
+            closeOnOverlayClick = true,
+            backdrop = true // 'static' | true | false
         } = options;
 
         // Сохраняем конфигурацию для текущего модального окна
@@ -250,7 +268,8 @@ const Modal = {
             minWidth: minWidth,
             minHeight: minHeight,
             requiredFields: requiredFields,
-            closeOnOverlayClick: closeOnOverlayClick
+            closeOnOverlayClick: closeOnOverlayClick,
+            backdrop: backdrop
         };
 
         this.titleEl.textContent = title;
@@ -269,6 +288,14 @@ const Modal = {
         this.modal.style.top = '';
         this.modal.style.margin = 'auto';
         this.modal.classList.remove('draggable');
+        
+        // Настраиваем backdrop (затенение фона)
+        this.overlay.classList.remove('backdrop-static', 'backdrop-disabled');
+        if (backdrop === 'static') {
+            this.overlay.classList.add('backdrop-static');
+        } else if (backdrop === false) {
+            this.overlay.classList.add('backdrop-disabled');
+        }
         
         // Создаем кнопки
         this.footerEl.innerHTML = '';
