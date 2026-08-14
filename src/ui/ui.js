@@ -179,13 +179,53 @@ function closeSaveModal() {
 function showMedianModal() {
     const file = getActiveFile();
     if (!file) return;
-    document.getElementById('newAperture').value = session.aperture;
-    document.getElementById('medianModal').classList.add('active');
+
+    const content = `
+        <form id="medianForm">
+            <div class="form-group">
+                <label class="form-label">Апертура *</label>
+                <input type="number" name="aperture" id="newAperture" class="form-input" 
+                       value="${session.aperture}" min="1" max="50" step="2" required>
+                <small class="form-hint">Нечетное число от 1 до 49</small>
+            </div>
+        </form>
+    `;
+
+    Modal.open({
+        title: 'Медианный фильтр',
+        content,
+        minWidth: 400,
+        minHeight: 250,
+        requiredFields: ['aperture'],
+        buttons: [
+            { 
+                text: 'Отмена', 
+                class: 'btn-secondary',
+                close: true
+            },
+            { 
+                text: 'Применить', 
+                class: 'btn-primary',
+                onClick: () => applyMedianFilter()
+            }
+        ]
+    });
 }
 
-// Закрытие модального окна
-function closeMedianModal() {
-    document.getElementById('medianModal').classList.remove('active');
+// Применение медианного фильтра
+function applyMedianFilter() {
+    const apertureInput = document.querySelector('[name="aperture"]');
+    const aperture = parseInt(apertureInput.value);
+    
+    // Сохраняем значение в сессию
+    session.aperture = aperture;
+    
+    // Закрываем модальное окно
+    Modal.close();
+    
+    // Здесь будет вызов функции применения фильтра
+    // Например: ImageOps.applyMedianFilter(aperture);
+    console.log('Применение медианного фильтра с апертурой:', aperture);
 }
 // ==========================================
 
