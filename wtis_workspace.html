@@ -944,34 +944,31 @@
 </div>
 
 <!-- Модальное окно для порога -->
-<div class="modal" id="thresholdModal">
-    <div class="modal-content" style="min-height: 380px;">
-        <div class="modal-title">
-            <span>Порог</span>
-            <button>✕</button>
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modal">
+        <div class="modal-header" id="modalTitle">Порог</div>
+        <button class="modal-close" id="modalClose">✕</button>
+        <div class="modal-body" id="modalBody">
+            <form id="thresholdForm">
+                <div class="form-group">
+                    <label class="form-label">min:</label>
+                    <input type="number" name="thresholdMin" id="thresholdMin" class="form-input" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">&lt; min:</label>
+                    <input type="number" name="thresholdLessMin" id="thresholdLessMin" class="form-input" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">max:</label>
+                    <input type="number" name="thresholdMax" id="thresholdMax" class="form-input" value="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">&gt; max:</label>
+                    <input type="number" name="thresholdMoreMax" id="thresholdMoreMax" class="form-input" value="1">
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-            <div class="modal-row">
-                <label>min:</label>
-                <input type="number" id="thresholdMin" class="modal-input" value="0">
-            </div>
-            <div class="modal-row">
-                <label>&lt; min:</label>
-                <input type="number" id="thresholdLessMin" class="modal-input" value="0">
-            </div>
-            <div class="modal-row">
-                <label>max:</label>
-                <input type="number" id="thresholdMax" class="modal-input" value="1">
-            </div>
-            <div class="modal-row">
-                <label>&gt; max:</label>
-                <input type="number" id="thresholdMoreMax" class="modal-input" value="1">
-            </div>
-        </div>
-        <div class="modal-buttons">
-            <button class="modal-btn primary" onclick="applyThresholdFilter()">OK</button>
-            <button class="modal-btn" onclick="closeThresholdModal()">Отмена</button>
-        </div>
+        <div class="modal-footer" id="modalFooter"></div>
         <div class="modal-resize-handle"></div>
     </div>
 </div>
