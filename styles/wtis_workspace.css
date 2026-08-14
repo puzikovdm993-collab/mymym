@@ -2934,94 +2934,102 @@ body:not(.light-theme) .tour-highlighted  {
 
 /* #region [Стиль для всех модальных окон] */
 
-
-.modal {
-    display: none;
+/* Затемнение фона */
+.modal-overlay {
     position: fixed;
-    inset: 0;
-    z-index: 10001;
-    align-items: center;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--modal-overlay);
+    display: none;
     justify-content: center;
+    align-items: center;
+    z-index: 10000;
 }
 
-.modal.active  {
+.modal-overlay.active {
     display: flex;
 }
 
-/* Контент модалки */
-.modal-content  {
-    background: var(--background-secondary);
-    border: 1px solid var(--border-color);
+/* Контейнер модального окна */
+.modal {
+    background-color: var(--background-secondary);
+    border-radius: var(--modal-radius);
+    width: 100%;
+    max-width: 500px;
+    min-width: 300px;
+    min-height: 200px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: var(--modal-shadow);
+    position: relative;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    width: 300px; height: 200px;
-    border-radius: var(--radius-md);
-    animation: modalFadeIn 0.2s ease-out;
 }
 
+.modal.draggable {
+    position: absolute;
+    max-width: none !important;
+}
 
-
-/* Заголовок == область перетаскивания */
-.modal-title  {
-    background: var(--background-tertiary);
-    color: var(--text-secondary);
-    padding: 0 16px;
+.modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: grab;
-    user-select: none;
+    padding: 20px 24px;
     border-bottom: 1px solid var(--border-color);
+    cursor: move;
     flex-shrink: 0;
-    font-size: 13px;
+}
+
+.modal-header h3 {
+    font-size: 18px;
     font-weight: 600;
-    letter-spacing: -0.01em;
-    height: 32px;
+    color: var(--text-secondary);
 }
 
-.modal-title:active  {
-    cursor: grabbing;
-    
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    line-height: 1;
 }
 
-/* Тело модалки */
-.modal-body  {
+.modal-close:hover {
+    color: var(--danger-color);
+}
+
+.modal-body {
+    padding: 24px;
     flex: 1;
-    padding: 6px 10px 10px 6px;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+    overflow-y: auto;
     background: var(--modal-bg);
 }
 
-
-/* Стили для параграфов внутри .modal-body */
-.modal-body p  {
-    flex-shrink: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding-bottom: 8px;
-    text-align: center;
-}
-
-.modal-body label {
-    flex-shrink: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding-bottom: 8px;
-}
-
-
-.modal-row {
+.modal-footer {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+    background: var(--modal-header-bg);
 }
 
+.modal-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, var(--border-color) 50%);
+    border-bottom-right-radius: var(--modal-radius);
+}
 
 /* Кнопки модалки */
 .modal-buttons {
@@ -3096,48 +3104,15 @@ body:not(.light-theme) .tour-highlighted  {
 }
 
 /* Ручка изменения размера */
-.modal-resize-handle  {
+.modal-resize-handle {
     position: absolute;
-    right: 0;
     bottom: 0;
-    width: 16px;
-    height: 16px;
-    cursor: se-resize;
-    background: transparent;
-    z-index: 10;
-}
-.modal-resize-handle::after  {
-    content: '';
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid var(--text-secondary );
-    border-bottom: 2px solid var(--text-secondary );
-    opacity: 0.4;
-}
-
-/* Кнопка закрытия в заголовке */
-.modal-title button  {
-    background: transparent;
-    border: none;
-    color: var(--danger-hover);
-    cursor: pointer;
-    font-size: 18px;
-    line-height: 1;
-    padding: 0px 2px 2px 2px;
-    border-radius: 2px;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-title button:hover {
-    background: var(--danger-hover);
-    color: var(--background-primary);
-    transform: rotate(90deg);
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, var(--border-color) 50%);
+    border-bottom-right-radius: var(--modal-radius);
 }
 
 /* Input fields in modals */
