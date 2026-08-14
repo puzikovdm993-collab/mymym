@@ -2949,16 +2949,12 @@ body:not(.light-theme) .tour-highlighted  {
 
 /* Контент модалки */
 .modal-content  {
-    position: fixed;
     background: var(--background-secondary);
     border: 1px solid var(--border-color);
     box-shadow: var(--modal-shadow);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
     width: 300px; height: 200px;
     border-radius: var(--radius-md);
     animation: modalFadeIn 0.2s ease-out;
