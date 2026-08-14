@@ -2952,6 +2952,23 @@ body:not(.light-theme) .tour-highlighted  {
     display: flex;
 }
 
+/* Backdrop: статический режим (затемнение + блокировка кликов) */
+.modal-overlay.backdrop-static {
+    background-color: rgba(0, 0, 0, 0.6);
+    cursor: not-allowed;
+}
+
+/* Backdrop: отключенный режим (без затемнения и без блокировки) */
+.modal-overlay.backdrop-disabled {
+    background-color: transparent;
+    pointer-events: none;
+}
+
+/* Модальное окно должно оставаться кликабельным при backdrop-disabled */
+.modal-overlay.backdrop-disabled .modal {
+    pointer-events: auto;
+}
+
 /* Контейнер модального окна */
 .modal {
     background-color: var(--background-secondary);
