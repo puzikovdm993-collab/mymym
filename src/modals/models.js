@@ -31,9 +31,9 @@ const Modal = {
         this.footerEl = document.getElementById('modalFooter');
         this.closeBtn = document.getElementById('modalClose');
 
-        // Закрытие по клику на оверлей
+        // Закрытие по клику на оверлей (проверяется в open)
         this.overlay.addEventListener('click', (e) => {
-            if (e.target === this.overlay) {
+            if (e.target === this.overlay && this.currentConfig?.closeOnOverlayClick !== false) {
                 this.close();
             }
         });
@@ -241,14 +241,16 @@ const Modal = {
             onClose = null,
             minWidth = 300,
             minHeight = 200,
-            requiredFields = []
+            requiredFields = [],
+            closeOnOverlayClick = true
         } = options;
 
         // Сохраняем конфигурацию для текущего модального окна
         this.currentConfig = {
             minWidth: minWidth,
             minHeight: minHeight,
-            requiredFields: requiredFields
+            requiredFields: requiredFields,
+            closeOnOverlayClick: closeOnOverlayClick
         };
 
         this.titleEl.textContent = title;
