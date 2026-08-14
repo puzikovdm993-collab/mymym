@@ -2956,9 +2956,10 @@ body:not(.light-theme) .tour-highlighted  {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    left: 100px;
-    top: 100px;
-    width: 300px; height: 200pх;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px; height: 200px;
     border-radius: var(--radius-md);
     animation: modalFadeIn 0.2s ease-out;
 }
