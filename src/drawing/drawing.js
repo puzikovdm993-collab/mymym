@@ -127,6 +127,41 @@ function updateGraph(x1, y1, x2, y2) {
 
 const LASSO_COLOR = '#0078d7';
 const LASSO_FILL_OPACITY = 0.15; // для готового выделения
+
+// Отрисовка прямоугольного выделения с "марширующей" рамкой
+function drawRectangleSelection(x, y, w, h) {
+    const file = getActiveFile();
+    if (!file || w <= 0 || h <= 0) return;
+    const ctx = file.ctx;
+
+    ctx.strokeStyle = '#ef4444';
+    ctx.fillStyle = `rgba(0, 120, 215, ${LASSO_FILL_OPACITY})`;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+// Вычисление всех точек внутри прямоугольника
+function calculatePointsInsideRectangle(x, y, w, h) {
+    const points = [];
+    const minX = Math.max(0, Math.floor(x));
+    const maxX = Math.min(getActiveFile().width - 1, Math.ceil(x + w));
+    const minY = Math.max(0, Math.floor(y));
+    const maxY = Math.min(getActiveFile().height - 1, Math.ceil(y + h));
+
+    for (let py = minY; py <= maxY; py++) {
+        for (let px = minX; px <= maxX; px++) {
+            points.push([px, py]);
+        }
+    }
+    return points;
+}
+
 function drawLasso(points, currentX, currentY) {
     const file = getActiveFile();
     if (!file || points.length === 0) return;
@@ -299,11 +334,23 @@ function drawProfile(profile) {
     ctx.lineTo(profile.x2, profile.y2);
     ctx.stroke();
 
-    // Рисуем концевые маркеры (синие кружки)
-    ctx.fillStyle = '#0078d7';
+    // Определяем цвет маркеров в зависимости от выбора
+    let startColor = '#0078d7'; // синий по умолчанию
+    let endColor = '#0078d7';   // синий по умолчанию
+    
+    if (selectedPoint === 'start') {
+        startColor = '#ffff00'; // желтый для выбранной начальной точки
+    } else if (selectedPoint === 'end') {
+        endColor = '#ffa500';   // оранжевый для выбранной конечной точки
+    }
+
+    // Рисуем концевые маркеры
+    ctx.fillStyle = startColor;
     ctx.beginPath();
     ctx.arc(profile.x1, profile.y1, 5, 0, 2 * Math.PI);
     ctx.fill();
+    
+    ctx.fillStyle = endColor;
     ctx.beginPath();
     ctx.arc(profile.x2, profile.y2, 5, 0, 2 * Math.PI);
     ctx.fill();
@@ -368,5 +415,54 @@ function drawProfileInProgress(x1, y1, x2, y2) {
         ctx.beginPath();
         ctx.arc(x2, y2, 5, 0, 2 * Math.PI);
         ctx.fill();
+    }
+}
+
+// Отрисовка подсветки начальной и конечной точки профиля при наведении
+function drawProfileHover(mouseX, mouseY) {
+    const file = getActiveFile();
+    if (!file || !currentProfile) return;
+    
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    if (!overlayCanvas) return;
+    
+    const ctx = overlayCanvas.getContext('2d');
+    
+    const threshold = Math.max(10 / zoom, 5);
+    
+    // Проверяем расстояние до начальной точки
+    const distStart = Math.hypot(mouseX - currentProfile.x1, mouseY - currentProfile.y1);
+    if (distStart < threshold) {
+        // Подсветка начальной точки - желтый круг с обводкой
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(currentProfile.x1, currentProfile.y1, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Текст "Начало"
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('Начало', currentProfile.x1 + 10, currentProfile.y1 - 10);
+    }
+    
+    // Проверяем расстояние до конечной точки
+    const distEnd = Math.hypot(mouseX - currentProfile.x2, mouseY - currentProfile.y2);
+    if (distEnd < threshold) {
+        // Подсветка конечной точки - оранжевый круг с обводкой
+        ctx.fillStyle = 'rgba(255, 165, 0, 0.5)';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(currentProfile.x2, currentProfile.y2, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+        
+        // Текст "Конец"
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Arial';
+        ctx.fillText('Конец', currentProfile.x2 + 10, currentProfile.y2 - 10);
     }
 }
